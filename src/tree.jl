@@ -128,11 +128,17 @@ end
 insert(tree::Nothing, t::T) where T = node(t, nothing, nothing, 1)
 function insert(tree::Node{T}, t::T) where T
     if t < tree.value
+        _height = height(tree.left)
         tree.left = insert(tree.left, t)
-        tree = balance(tree)
+        if height(tree.left) != _height
+            tree = balance(tree)
+        end
     elseif t > tree.value
+        _height = height(tree.right)
         tree.right = insert(tree.right, t)
-        tree = balance(tree)
+        if height(tree.right) != _height
+            tree = balance(tree)
+        end
     end
     tree
 end
@@ -144,13 +150,19 @@ function insert(tree::I, t::T, alloc::A) where {T, I, A <: AbstractAllocator{Tup
         value, left, right, _ = alloc[tree]
         @assert left != tree && right != tree
         if t < value
+            _height = height(left, alloc)
             left = insert(left, t, alloc)
             alloc[tree] = Base.setindex(alloc[tree], left, 2)
-            tree = balance(tree, alloc)
+            if height(left, alloc) != _height
+                tree = balance(tree, alloc)
+            end
         elseif t > value
+            _height = height(right, alloc)
             right = insert(right, t, alloc)
             alloc[tree] = Base.setindex(alloc[tree], right, 3)
-            tree = balance(tree, alloc)
+            if height(right, alloc) != _height
+                tree = balance(tree, alloc)
+            end
         end
         tree
     end
@@ -197,22 +209,34 @@ end
 delete(tree::Nothing, t::T) where T = tree, tree
 function delete(tree::Node{T}, t::T) where T
     if t < tree.value
+        _height = height(tree.left)
         tree.left = delete(tree.left, t)
-        tree = balance(tree)
+        if height(tree.left) != _height
+            tree = balance(tree)
+        end
     elseif t > tree.value
+        _height = height(tree.right)
         tree.right = delete(tree.right, t)
-        tree = balance(tree)
+        if height(tree.right) != _height
+            tree = balance(tree)
+        end
     else
         if tree.left == nothing && tree.right == nothing
             tree = nothing
         elseif height(tree.left) >= height(tree.right)
+            _height = height(tree.left)
             tree.value = tree.left.value
             tree.left = delete(tree.left, tree.left.value)
-            tree = balance(tree)
+            if height(tree.left) != _height
+                tree = balance(tree)
+            end
         else
+            _height = height(tree.right)
             tree.value = tree.right.value
             tree.right = delete(tree.right, tree.right.value)
-            tree = balance(tree)
+            if height(tree.right) != _height
+                tree = balance(tree)
+            end
         end
     end
     tree
@@ -225,13 +249,19 @@ function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractAllocator{Tup
         value, left, right, _ = alloc[tree]
         @assert left != tree && right != tree
         if t < value
+            _height = height(left, alloc)
             left = delete(left, t, alloc)
             alloc[tree] = Base.setindex(alloc[tree], left, 2)
-            tree = balance(tree, alloc)
+            if height(left, alloc) != _height
+                tree = balance(tree, alloc)
+            end
         elseif t > value
+            _height = height(right, alloc)
             right = delete(right, t, alloc)
             alloc[tree] = Base.setindex(alloc[tree], right, 3)
-            tree = balance(tree, alloc)
+            if height(right, alloc) != _height
+                tree = balance(tree, alloc)
+            end
         else
             if left == 0 && right == 0
                 tree = 0
@@ -239,17 +269,21 @@ function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractAllocator{Tup
                 height_left = height(left, alloc)
                 height_right = height(right, alloc)
                 if height_left >= height_right
-                    value, _, _, _ = alloc[left]
+                    value, _, _, _height = alloc[left]
                     alloc[tree] = Base.setindex(alloc[tree], value, 1)
                     left = delete(left, value, alloc)
                     alloc[tree] = Base.setindex(alloc[tree], left, 2)
-                    tree = balance(tree, alloc)
+                    if height(left, alloc) != _height
+                        tree = balance(tree, alloc)
+                    end
                 else
-                    value, _, _, _ = alloc[right]
+                    value, _, _, _height = alloc[right]
                     alloc[tree] = Base.setindex(alloc[tree], value, 1)
                     right = delete(right, value, alloc)
                     alloc[tree] = Base.setindex(alloc[tree], right, 3)
-                    tree = balance(tree, alloc)
+                    if height(right, alloc) != _height
+                        tree = balance(tree, alloc)
+                    end
                 end
             end
         end

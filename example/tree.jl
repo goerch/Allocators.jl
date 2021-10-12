@@ -144,10 +144,3 @@ GC.gc()
 GC.gc()
 @btime test14()
 GC.gc()
-
-#= using Profile
-Profile.clear()
-test12()
-@profile test12()
-# Profile.print()
-Juno.profiler() =#
