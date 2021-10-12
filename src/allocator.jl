@@ -112,7 +112,7 @@ Base.isempty(alloc::StaticFreeListAllocator{T, I}) where {T, I} =
     alloc.last == alloc.freelist.last
 
 function deallocate!(alloc::StaticFreeListAllocator{T, I}, i::I) where {T, I}
-    if i !== alloc.last
+    if i != alloc.last
         push!(alloc.freelist, i)
     else
         alloc.last -= 1

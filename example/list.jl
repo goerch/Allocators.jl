@@ -37,13 +37,10 @@ function sumint(l, n, alloc)
 end
 
 function freeint(l, alloc)
-    it = ListIterator((l, alloc))
-    n = iterate(it)
-    while n !== nothing
-        # deallocate(ListIterator((l, alloc)))
+    while l != 0
+        car, cdr = alloc[l]
         deallocate(alloc, l)
-        _, l = n
-        n = iterate(it, l)
+        l = cdr
     end
 end
 
@@ -113,13 +110,10 @@ function sumsarray(l, alloc)
 end
 
 function freesarray(l, alloc)
-    it = ListIterator((l, alloc))
-    n = iterate(it)
-    while n !== nothing
-        # deallocate(ListIterator((l, alloc)))
+    while l != 0
+        car, cdr = alloc[l]
         deallocate(alloc, l)
-        _, l = n
-        n = iterate(it, l)
+        l = cdr
     end
 end
 
