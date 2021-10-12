@@ -7,11 +7,15 @@ end
 const List{T} = Union{Nothing, Cons{T}}
 
 nil() = nothing
-cons(car::T, cdr) where T = Cons{T}(car, cdr)
+cons(car::T, cdr::List{T}) where T = Cons{T}(car, cdr)
 
 nil(alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I}, I}} = 0
 cons(car::T, cdr::I, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I}, I}} =
     pushend!(alloc, (car, cdr))
+
+nil(alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I}, I}} = 0
+cons(car::T, cdr::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I}, I}} =
+    allocate!(alloc, (car, cdr))
 
 Base.iterate(::Cons{T}, cdr::Nothing) where T = nothing
 Base.iterate(list::Nothing) where T = nothing
@@ -26,6 +30,11 @@ Base.iterate(iter::ListIterator{T, I, A}, i::I) where {T, I, A <: AbstractAlloca
     i == 0 ? nothing : iter.list[2][i]
 Base.iterate(iter::ListIterator{T, I, A}) where {T, I, A <: AbstractAllocator{Tuple{T, I}, I}} =
     iter.list[1] == 0 ? nothing : iter.list[2][iter.list[1]]
+
+deallocate(iter::ListIterator{T, I, A}) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I}, I}} =
+    deallocate!(iter.list[2], iter.list[1])
+deallocate(alloc::A, i::I) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I}, I}} =
+    deallocate!(alloc, i)
 
 @noinline function Base.reverse(list::List{T}) where T
     #= res = nil()

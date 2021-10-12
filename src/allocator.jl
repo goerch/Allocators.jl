@@ -1,4 +1,5 @@
 abstract type AbstractAllocator{T, I} end
+abstract type AbstractFreeListAllocator{T, I} <: AbstractAllocator{T, I} end
 
 abstract type Direction end
 struct Forward <: Direction end
@@ -62,6 +63,69 @@ end
 function emptybegin!(alloc::StaticAllocator{T, I}) where {T, I}
     alloc.first = alloc.n + 1
     alloc.last = alloc.n
+end
+
+mutable struct FreeList{I}
+    store::Vector{I}
+    last::I
+    FreeList{I}(n) where I =
+        new{I}(Vector{I}(undef, n), 0)
+end
+
+function Base.push!(freelist::FreeList{I}, i::I) where I
+    freelist.last += 1
+    freelist.store[freelist.last] = i
+end
+
+Base.isempty(freelist::FreeList{I}) where I =
+    freelist.last == 0
+
+function Base.pop!(freelist::FreeList{I}) where I
+    i = freelist.store[freelist.last]
+    freelist.last -= 1
+    i
+end
+
+mutable struct StaticFreeListAllocator{T, I} <: AbstractFreeListAllocator{T, I}
+    store::Vector{T}
+    last::I
+    freelist::FreeList{I}
+    StaticFreeListAllocator{T, I}(n) where {T, I} =
+        new{T, I}(Vector{T}(undef, n), 0, FreeList{I}(n))
+    StaticFreeListAllocator{T, I}(store, last, freelist) where {T, I} =
+        new{T, I}(store, last, freelist)
+end
+
+function allocate!(alloc::StaticFreeListAllocator{T, I}, t::T) where {T, I}
+    if !isempty(alloc.freelist)
+        i = pop!(alloc.freelist)
+        alloc.store[i] = t
+        i
+    else
+        alloc.last += 1
+        alloc.store[alloc.last] = t
+        alloc.last
+    end
+end
+
+Base.isempty(alloc::StaticFreeListAllocator{T, I}) where {T, I} =
+    alloc.last == alloc.freelist.last
+
+function deallocate!(alloc::StaticFreeListAllocator{T, I}, i::I) where {T, I}
+    if i !== alloc.last
+        push!(alloc.freelist, i)
+    else
+        alloc.last -= 1
+    end
+end
+
+Base.getindex(alloc::StaticFreeListAllocator{T}, i::I) where {T, I} =
+    alloc.store[i]
+Base.setindex!(alloc::StaticFreeListAllocator{T, I}, t::T, i::I)  where {T, I} =
+    alloc.store[i] = t
+
+function Base.empty!(alloc::StaticFreeListAllocator{T, I}) where {T, I}
+    alloc.last = 0
 end
 
 const N = 16

@@ -1,3 +1,4 @@
+import StaticArrays
 using BenchmarkTools
 
 include("../src/allocator.jl")
@@ -35,6 +36,17 @@ function sumint(l, n, alloc)
     @assert s == n * (n + 1) / 2
 end
 
+function freeint(l, alloc)
+    it = ListIterator((l, alloc))
+    n = iterate(it)
+    while n !== nothing
+        # deallocate(ListIterator((l, alloc)))
+        deallocate(alloc, l)
+        _, l = n
+        n = iterate(it, l)
+    end
+end
+
 function test1()
     for i in 1:1000
         l = buildint(1000)
@@ -42,12 +54,22 @@ function test1()
     end
 end
 
-function test2()
+function test2a()
     alloc = StaticAllocator{ListNode{Int, Int}, Int}(1000)
     for i in 1:1000
         l = buildint(1000, alloc)
         sumint(l, 1000, alloc)
         emptyend!(alloc)
+    end
+end
+
+function test2b()
+    alloc = StaticFreeListAllocator{ListNode{Int, Int}, Int}(1000)
+    for i in 1:1000
+        l = buildint(1000, alloc)
+        sumint(l, 1000, alloc)
+        freeint(l, alloc)
+        @assert isempty(alloc)
     end
 end
 
@@ -60,73 +82,96 @@ function test3()
     end
 end
 
-function buildstring(n)
+function buildsarray(n)
     l = nil()
     for i in 1:n
-        l = cons(string(i), l)
+        l = cons(zeros(StaticArrays.SVector{3,Float64}), l)
     end
     l
 end
 
-function buildstring(n, alloc)
+function buildsarray(n, alloc)
     l = nil(alloc)
     for i in 1:n
-        l = cons(string(i), l, alloc)
+        l = cons(zeros(StaticArrays.SVector{3,Float64}), l, alloc)
     end
     l
 end
 
-function sumstring(l, n)
-    s = 0
+function sumsarray(l)
+    s = zeros(StaticArrays.SVector{3,Float64})
     for t in l
-        s += parse(Int, t)
+        s += t
     end
-    @assert s == n * (n + 1) / 2
 end
 
-function sumstring(l, n, alloc)
-    s = 0
+function sumsarray(l, alloc)
+    s = zeros(StaticArrays.SVector{3,Float64})
     for t in ListIterator((l, alloc))
-        s += parse(Int, t)
+        s += t
     end
-    @assert s == n * (n + 1) / 2
+end
+
+function freesarray(l, alloc)
+    it = ListIterator((l, alloc))
+    n = iterate(it)
+    while n !== nothing
+        # deallocate(ListIterator((l, alloc)))
+        deallocate(alloc, l)
+        _, l = n
+        n = iterate(it, l)
+    end
 end
 
 function test4()
     for i in 1:1000
-        l = buildstring(1000)
-        sumstring(l, 1000)
+        l = buildsarray(1000)
+        sumsarray(l)
     end
 end
 
-function test5()
-    alloc = StaticAllocator{ListNode{String, Int}, Int}(1000)
+function test5a()
+    alloc = StaticAllocator{ListNode{StaticArrays.SVector{3,Float64}, Int}, Int}(1000)
     for i in 1:1000
-        l = buildstring(1000, alloc)
-        sumstring(l, 1000, alloc)
+        l = buildsarray(1000, alloc)
+        sumsarray(l, alloc)
         emptyend!(alloc)
     end
 end
 
-function test6()
-    alloc = VariableAllocator{ListNode{String, Int}, Int}()
+function test5b()
+    alloc = StaticFreeListAllocator{ListNode{StaticArrays.SVector{3,Float64}, Int}, Int}(1000)
     for i in 1:1000
-        l = buildstring(1000, alloc)
-        sumstring(l, 1000, alloc)
+        l = buildsarray(1000, alloc)
+        sumsarray(l, alloc)
+        freesarray(l, alloc)
+        @assert isempty(alloc)
+    end
+end
+
+function test6()
+    alloc = VariableAllocator{ListNode{StaticArrays.SVector{3,Float64}, Int}, Int}()
+    for i in 1:1000
+        l = buildsarray(1000, alloc)
+        sumsarray(l, alloc)
         emptyend!(alloc)
     end
 end
 
 #= test1()
-test2()
+test2a()
+test2b()
 test3()
 test4()
-test5()
+test5a()
+test5b()
 test6() =#
 
 @btime test1()
-@btime test2()
+@btime test2a()
+@btime test2b()
 @btime test3()
 @btime test4()
-@btime test5()
+@btime test5a()
+@btime test5b()
 @btime test6()
