@@ -2,145 +2,116 @@ import DataStructures
 using BenchmarkTools
 
 include("../src/allocator.jl")
-include("../src/stack.jl")
 include("../src/tree.jl")
 
-function build(n)
-    tree = nil()
-    for i in 1:n
-        tree = insert(tree, i)
-    end
-    tree
-end
-
-function find(n, tree)
-    @assert !haskey(tree, 0)
-    for i in 1:n
-        @assert haskey(tree, i)
-    end
-    @assert !haskey(tree, n + 1)
-end
-
-function destroy(n, tree)
-    for i in 1:n
-        @assert haskey(tree, i)
-        tree = delete(tree, i)
-        @assert !haskey(tree, i)
-    end
-    tree
-end
-
-function build(n, alloc)
-    tree = nil(alloc)
-    for i in 1:n
-        tree = insert(tree, i, alloc)
-    end
-    tree
-end
-
-function find(n, tree, alloc)
-    @assert !haskey(tree, 0, alloc)
-    for i in 1:n
-        @assert haskey(tree, i, alloc)
-    end
-    @assert !haskey(tree, n + 1, alloc)
-end
-
-function destroy(n, tree, alloc)
-    for i in 1:n
-        @assert haskey(tree, i, alloc)
-        tree = delete(tree, i, alloc)
-        @assert !haskey(tree, i, alloc)
-    end
-    tree
-end
-
-const test_M = 1000
-const test_N = 1000
-
-function test10()
+function testbase1(m, n)
     tree = Set{Int}()
-    for i in 1:test_M
-        for j in 1:test_N
+    for i in 1:m
+        for j in 1:n
             push!(tree, j)
         end
-        for j in 1:test_N
+        for j in 1:n
             @assert j in tree
         end
-        for j in 1:test_N
-            @assert j in tree
+        for j in 1:n
             pop!(tree, j)
-            @assert !(j in tree)
         end
-        empty!(tree)
-        # tree = Set{Int}()
     end
 end
 
-function test11()
+function testbase2(m, n)
     tree = DataStructures.SortedSet{Int}()
-    for i in 1:test_M
-        for j in 1:test_N
+    for i in 1:m
+        for j in 1:n
             push!(tree, j)
         end
-        for j in 1:test_N
+        for j in 1:n
             @assert haskey(tree, j)
         end
-        for j in 1:test_N
-            @assert haskey(tree, j)
+        for j in 1:n
             pop!(tree, j)
+        end
+    end
+end
+
+function testbase3(m, n)
+    for i in 1:m
+        tree = nil()
+        for j in 1:n
+            tree = insert(tree, j)
+        end
+        for j in 1:n
+            @assert haskey(tree, j)
+        end
+        for j in 1:n
+            @assert haskey(tree, j)
+            tree = delete(tree, j)
             @assert !haskey(tree, j)
         end
-        empty!(tree)
-        # tree = DataStructures.SortedSet{Int}()
     end
 end
 
-function test12()
-    for i in 1:test_M
-        tree = build(test_N)
-        find(test_N, tree)
-        tree = destroy(test_N, tree)
-        @assert tree == nothing
-    end
-end
-
-function test13()
-    alloc = StaticAllocator{TreeNode{Int, Int}, Int}(test_N)
-    for i in 1:test_M
-        tree = build(test_N, alloc)
-        find(test_N, tree, alloc)
-        tree = destroy(test_N, tree, alloc)
-        @assert tree == 0
+function testalloc(m, n, alloc)
+    for i in 1:m
+        tree = nil(alloc)
+        for j in 1:n
+            tree = insert(tree, j, alloc)
+        end
+        for j in 1:n
+            @assert haskey(tree, j, alloc)
+        end
+        for j in 1:n
+            # @assert haskey(tree, j, alloc)
+            tree = delete(tree, j, alloc)
+            # @assert !haskey(tree, j, alloc)
+        end
         emptyend!(alloc)
     end
 end
 
-function test14()
-    alloc = VariableAllocator{TreeNode{Int, Int}, Int}()
-    for i in 1:test_M
-        tree = build(test_N, alloc)
-        find(test_N, tree, alloc)
-        tree = destroy(test_N, tree, alloc)
-        @assert tree == 0
-        emptyend!(alloc)
+function testfree(m, n, alloc)
+    for i in 1:m
+        tree = nil(alloc)
+        for j in 1:n
+            tree = insert(tree, j, alloc)
+        end
+        for j in 1:n
+            @assert haskey(tree, j, alloc)
+        end
+        for j in 1:n
+            # @assert haskey(tree, j, alloc)
+            tree = delete(tree, j, alloc)
+            # @assert !haskey(tree, j, alloc)
+        end
+        @assert isempty(alloc)
     end
 end
 
-#= test10()
-test11()
-test12()
-test13()
-test14() =#
+for (m, n) in [(10, 100000), (1000, 1000), (100000, 10)]
+    println(m, " runs with ", n, " elements")
 
-GC.gc()
-@btime test10()
-GC.gc()
-@btime test11()
-GC.gc()
-@btime test12()
-GC.gc()
-@btime test13()
-GC.gc()
-@btime test14()
-GC.gc()
+    print("  Set                           ")
+    @btime testbase1($m, $n)
+
+    print("  DataStructures.SortedSet      ")
+    @btime testbase2($m, $n)
+
+    print("  without allocator             ")
+    @btime testbase3($m, $n)
+
+    print("  fixed allocator               ")
+    alloc = Allocator{TreeNode{Int, Int}, Int}(n)
+    @btime testalloc($m, $n, $alloc)
+
+    print("  resizable allocator           ")
+    alloc = Allocator{TreeNode{Int, Int}, Int}(nothing)
+    @btime testalloc($m, $n, $alloc)
+
+    print("  fixed free list allocator     ")
+    alloc = FreeListAllocator{TreeNode{Int, Int}, Int}(n)
+    @btime testfree($m, $n, $alloc)
+
+    print("  resizable free list allocator ")
+    alloc = FreeListAllocator{TreeNode{Int, Int}, Int}(nothing)
+    @btime testfree($m, $n, $alloc)
+end

@@ -1,108 +1,53 @@
 import DataStructures
+import StaticArrays
 using BenchmarkTools
 
 include("../src/allocator.jl")
-include("../src/list.jl")
 include("../src/queue.jl")
 
-function buildint!(q, n)
-    for i in 1:n
-        push!(q, i)
-    end
-end
-
-function checkint(q, n)
-    for i in 1:n
-        @assert i == pop!(q)
-    end
-end
-
-function test1()
-    q = DataStructures.Queue{Int}()
-    for i in 1:1000
-        for j in 1:1000
-            DataStructures.enqueue!(q, j)
+function testbase(m, n, p)
+    q = DataStructures.Queue{Tuple{Int, typeof(p)}}()
+    for i in 1:m
+        for j in 1:n
+            DataStructures.enqueue!(q, (j, p))
         end
-        for j in 1:1000
-            @assert j == DataStructures.dequeue!(q)
+        for j in 1:n
+            @assert j == DataStructures.dequeue!(q)[1]
         end
-        empty!(q)
-        # q = DataStructures.Stack{Int}()
     end
 end
 
-function test2()
-    q = FunQueue{Int}(0)
-    for i in 1:1000
-        buildint!(q, 1000)
-        checkint(q, 1000)
-        empty!(q)
-        # q = FunQueue{Int}(0)
-    end
-end
-
-const StaticFunQueue = AllocatedFunQueue{Int, Int, StaticAllocator{ListNode{Int, Int}, Int}}
-
-function test3()
-    q = StaticFunQueue(1000)
-    for i in 1:1000
-        buildint!(q, 1000)
-        checkint(q, 1000)
-        empty!(q)
-        # q = StaticFunQueue(1000)
-    end
-end
-
-const VariableFunQueue = AllocatedFunQueue{Int, Int, VariableAllocator{ListNode{Int, Int}, Int}}
-
-function test4()
-    q = VariableFunQueue()
-    for i in 1:1000
-        buildint!(q, 1000)
-        checkint(q, 1000)
-        empty!(q)
-        # q = VariableFunQueue()
-    end
-end
-
-const StaticQueue = Queue{Int, Int, StaticAllocator{Int, Int}}
-
-function test5()
-    q = StaticQueue(1000)
-    for i in 1:1000
-        buildint!(q, 1000)
-        checkint(q, 1000)
-        empty!(q)
-        # q = StaticQueue(1000)
-    end
-end
-
-const VariableQueue = Queue{Int, Int, VariableAllocator{Int, Int}}
-
-function test6()
-    q = VariableQueue()
-    for i in 1:1000
-        for j in 1:1000
-            push!(q, j)
+function testalloc(m, n, p, q)
+    for i in 1:m
+        for j in 1:n
+            push!(q, (j, p))
         end
-        for j in 1:1000
-            @assert j == pop!(q)
+        for j in 1:n
+            @assert j == pop!(q)[1]
         end
-        empty!(q)
-        # q = VariableQueue()
+        @assert isempty(q)
+        emptyend!(q.alloc)
     end
 end
 
-#= test1()
-test2()
-test3()
-test4()
-test5()
-test6() =#
+for (m, n) in [(10, 100000), (100000, 10)]
+    println(m, " runs with ", n, " elements")
+    for p in [1, 10, 100]
+        println(" payload of ", p, " float(s)")
 
-@btime test1()
-@btime test2()
-@btime test3()
-@btime test4()
-@btime test5()
-@btime test6()
+        Payload = StaticArrays.SVector{p ,Float64}
+
+        print("  DataStructures.Queue          ")
+        @btime testbase($m, $n, zeros($Payload))
+
+        print("  fixed allocator               ")
+        alloc = Allocator{Tuple{Int, Payload}, Int}(n)
+        q = Queue{Tuple{Int, Payload}, Int, Allocator{Tuple{Int, Payload}, Int}}(alloc)
+        @btime testalloc($m, $n, zeros($Payload), $q)
+
+        print("  resizable allocator           ")
+        alloc = Allocator{Tuple{Int, Payload}, Int}(nothing)
+        q = Queue{Tuple{Int, Payload}, Int, Allocator{Tuple{Int, Payload}, Int}}(alloc)
+        @btime testalloc($m, $n, zeros($Payload), $q)
+    end
+end

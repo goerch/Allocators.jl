@@ -11,9 +11,12 @@ const Tree{T} = Union{Nothing, Node{T}}
 nil() = nothing
 node(t::T, left, right, height) where T = Node{T}(t, left, right, height)
 
-nil(alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}} = 0
-node(t::T, left::I, right::I, height::I, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}} =
-    pushend!(alloc, (t, left, right, height))
+nil(alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}} = 0
+node(t::T, left::I, right::I, height::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}} =
+    allocateend!(alloc, (t, left, right, height))
+
+deallocate(i::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}} =
+    deallocate!(alloc, i)
 
 height(tree::Nothing) = 0
 height(tree::Node{T}) where T = tree.height
@@ -28,7 +31,7 @@ function height!(tree::Node{T}) where T
     max(left, right) + 1
 end
 
-function height(tree::I, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}}
+function height(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     if tree == 0
         0
     else
@@ -37,12 +40,11 @@ function height(tree::I, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, 
     end
 end
 
-function height!(tree::I, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}}
+function height!(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     if tree == 0
         0
     else
         value, left, right, _ = alloc[tree]
-        @assert left != tree && right != tree
         height_left = height(left, alloc)
         height_right = height(right, alloc)
         max(height_left, height_right) + 1
@@ -62,9 +64,8 @@ function rotateleft(tree::Node{T})  where T
     tree
 end
 
-function rotateright(tree::I, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}}
+function rotateright(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     value, left, right, _ = alloc[tree]
-    @assert left != tree && right != tree
     _, _, left_right, _ = alloc[left]
     alloc[left] = Base.setindex(alloc[left], tree, 3)
     right = tree
@@ -73,9 +74,8 @@ function rotateright(tree::I, alloc::A) where {T, I, A <: AbstractAllocator{Tupl
     alloc[right] = Base.setindex(alloc[right], height!(right, alloc), 4)
     tree
 end
-function rotateleft(tree::I, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}}
+function rotateleft(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     value, left, right, _ = alloc[tree]
-    @assert left != tree && right != tree
     _, right_left, _, _ = alloc[right]
     alloc[right] = Base.setindex(alloc[right], tree, 2)
     left = tree
@@ -104,9 +104,8 @@ function balance(tree::Node{T}) where T
     tree
 end
 
-function balance(tree::I, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}}
+function balance(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     _, left, right, in_height = alloc[tree]
-    @assert left != tree && right != tree
     height_left = height(left, alloc)
     height_right = height(right, alloc)
     if height_left < height_right - 1
@@ -143,12 +142,11 @@ function insert(tree::Node{T}, t::T) where T
     tree
 end
 
-function insert(tree::I, t::T, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}}
+function insert(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     if tree == 0
         node(t, 0, 0, 1, alloc)
     else
         value, left, right, _ = alloc[tree]
-        @assert left != tree && right != tree
         if t < value
             _height = height(left, alloc)
             left = insert(left, t, alloc)
@@ -179,12 +177,11 @@ function Base.haskey(tree::Node{T}, t::T) where T
     end
 end
 
-function Base.haskey(tree::I, t::T, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}}
+function Base.haskey(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     if tree == 0
         false
     else
         value, left, right, _ = alloc[tree]
-        @assert left != tree && right != tree
         if t < value
             haskey(left, t, alloc)
         elseif t > value
@@ -206,7 +203,7 @@ function Base.haskey(tree::I, t::T, alloc::A) where {T, I, A <: AbstractAllocato
     return false =#
 end
 
-delete(tree::Nothing, t::T) where T = tree, tree
+delete(tree::Nothing, t::T) where T = tree
 function delete(tree::Node{T}, t::T) where T
     if t < tree.value
         _height = height(tree.left)
@@ -242,7 +239,7 @@ function delete(tree::Node{T}, t::T) where T
     tree
 end
 
-function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractAllocator{Tuple{T, I, I, I}, I}}
+function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     if tree == 0
         0
     else
@@ -264,6 +261,7 @@ function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractAllocator{Tup
             end
         else
             if left == 0 && right == 0
+                deallocate(tree, alloc)
                 tree = 0
             else
                 height_left = height(left, alloc)

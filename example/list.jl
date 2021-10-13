@@ -4,168 +4,80 @@ using BenchmarkTools
 include("../src/allocator.jl")
 include("../src/list.jl")
 
-function buildint(n)
-    l = nil()
-    for i in 1:n
-        l = cons(i, l)
-    end
-    l
-end
-
-function buildint(n, alloc)
-    l = nil(alloc)
-    for i in 1:n
-        l = cons(i, l, alloc)
-    end
-    l
-end
-
-function sumint(l, n)
-    s = 0
-    for t in l
-        s += t
-    end
-    @assert s == n * (n + 1) / 2
-end
-
-function sumint(l, n, alloc)
-    s = 0
-    for t in ListIterator((l, alloc))
-        s += t
-    end
-    @assert s == n * (n + 1) / 2
-end
-
-function freeint(l, alloc)
-    while l != 0
-        car, cdr = alloc[l]
-        deallocate(alloc, l)
-        l = cdr
+function testbase(m, n, p)
+    for i in 1:m
+        l = nil()
+        for j in 1:n
+            l = cons((j, p) , l)
+        end
+        s = 0
+        while l != nothing
+            s += l.car[1]
+            l = l.cdr
+        end
+        @assert s == n * (n + 1) / 2
     end
 end
 
-function test1()
-    for i in 1:1000
-        l = buildint(1000)
-        sumint(l, 1000)
-    end
-end
-
-function test2a()
-    alloc = StaticAllocator{ListNode{Int, Int}, Int}(1000)
-    for i in 1:1000
-        l = buildint(1000, alloc)
-        sumint(l, 1000, alloc)
+function testalloc(m, n, p, alloc)
+    for i in 1:m
+        l = nil(alloc)
+        for j in 1:n
+            l = cons((j, p), l, alloc)
+        end
+        s = 0
+        while l != 0
+            car, cdr = alloc[l]
+            s += car[1]
+            l = cdr
+        end
+        @assert s == n * (n + 1) / 2
         emptyend!(alloc)
     end
 end
 
-function test2b()
-    alloc = StaticFreeListAllocator{ListNode{Int, Int}, Int}(1000)
-    for i in 1:1000
-        l = buildint(1000, alloc)
-        sumint(l, 1000, alloc)
-        freeint(l, alloc)
+function testfree(m, n, p, alloc)
+    for i in 1:m
+        l = nil(alloc)
+        for j in 1:n
+            l = cons((j, p), l, alloc)
+        end
+        s = 0
+        while l != 0
+            car, cdr = alloc[l]
+            s += car[1]
+            deallocate(l, alloc)
+            l = cdr
+        end
+        @assert s == n * (n + 1) / 2
         @assert isempty(alloc)
     end
 end
 
-function test3()
-    alloc = VariableAllocator{ListNode{Int, Int}, Int}()
-    for i in 1:1000
-        l = buildint(1000, alloc)
-        sumint(l, 1000, alloc)
-        emptyend!(alloc)
+for (m, n) in [(10, 100000), (100000, 10)]
+    println(m, " runs with ", n, " elements")
+    for p in [1, 10, 100]
+        println(" payload of ", p, " float(s)")
+
+        Payload = StaticArrays.SVector{p, Float64}
+
+        print("  without allocator             ")
+        @btime testbase($m, $n, zeros($Payload))
+
+        print("  fixed allocator               ")
+        alloc = Allocator{ListNode{Tuple{Int, Payload}, Int}, Int}(n)
+        @btime testalloc($m, $n, zeros($Payload), $alloc)
+
+        print("  resizable allocator           ")
+        alloc = Allocator{ListNode{Tuple{Int, Payload}, Int}, Int}(nothing)
+        @btime testalloc($m, $n, zeros($Payload), $alloc)
+
+        print("  fixed free list allocator     ")
+        alloc = FreeListAllocator{ListNode{Tuple{Int, Payload}, Int}, Int}(n)
+        @btime testfree($m, $n, zeros($Payload), $alloc)
+
+        print("  resizable free list allocator ")
+        alloc = FreeListAllocator{ListNode{Tuple{Int, Payload}, Int}, Int}(nothing)
+        @btime testfree($m, $n, zeros($Payload), $alloc)
     end
 end
-
-function buildsarray(n)
-    l = nil()
-    for i in 1:n
-        l = cons(zeros(StaticArrays.SVector{3,Float64}), l)
-    end
-    l
-end
-
-function buildsarray(n, alloc)
-    l = nil(alloc)
-    for i in 1:n
-        l = cons(zeros(StaticArrays.SVector{3,Float64}), l, alloc)
-    end
-    l
-end
-
-function sumsarray(l)
-    s = zeros(StaticArrays.SVector{3,Float64})
-    for t in l
-        s += t
-    end
-end
-
-function sumsarray(l, alloc)
-    s = zeros(StaticArrays.SVector{3,Float64})
-    for t in ListIterator((l, alloc))
-        s += t
-    end
-end
-
-function freesarray(l, alloc)
-    while l != 0
-        car, cdr = alloc[l]
-        deallocate(alloc, l)
-        l = cdr
-    end
-end
-
-function test4()
-    for i in 1:1000
-        l = buildsarray(1000)
-        sumsarray(l)
-    end
-end
-
-function test5a()
-    alloc = StaticAllocator{ListNode{StaticArrays.SVector{3,Float64}, Int}, Int}(1000)
-    for i in 1:1000
-        l = buildsarray(1000, alloc)
-        sumsarray(l, alloc)
-        emptyend!(alloc)
-    end
-end
-
-function test5b()
-    alloc = StaticFreeListAllocator{ListNode{StaticArrays.SVector{3,Float64}, Int}, Int}(1000)
-    for i in 1:1000
-        l = buildsarray(1000, alloc)
-        sumsarray(l, alloc)
-        freesarray(l, alloc)
-        @assert isempty(alloc)
-    end
-end
-
-function test6()
-    alloc = VariableAllocator{ListNode{StaticArrays.SVector{3,Float64}, Int}, Int}()
-    for i in 1:1000
-        l = buildsarray(1000, alloc)
-        sumsarray(l, alloc)
-        emptyend!(alloc)
-    end
-end
-
-#= test1()
-test2a()
-test2b()
-test3()
-test4()
-test5a()
-test5b()
-test6() =#
-
-@btime test1()
-@btime test2a()
-@btime test2b()
-@btime test3()
-@btime test4()
-@btime test5a()
-@btime test5b()
-@btime test6()
