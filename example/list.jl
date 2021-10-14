@@ -77,26 +77,45 @@ for (m, n) in [(10, 100000), (100000, 10)]
 
         Payload = StaticArrays.SVector{p, Float64}
 
+        GC.gc()
+
         print("  DataStructures.List                ")
         @btime testbase1($m, $n, zeros($Payload))
 
+        GC.gc()
+
         print("  List without allocator             ")
         @btime testbase2($m, $n, zeros($Payload))
+
+        GC.gc()
 
         print("  with fixed allocator               ")
         alloc = Allocator{ListNode{Tuple{Int, Payload}, Int}, Int}(n)
         @btime testalloc($m, $n, zeros($Payload), $alloc)
 
+        GC.gc()
+
         print("  with resizable allocator           ")
         alloc = Allocator{ListNode{Tuple{Int, Payload}, Int}, Int}(nothing)
         @btime testalloc($m, $n, zeros($Payload), $alloc)
+
+        GC.gc()
 
         print("  with fixed free list allocator     ")
         alloc = FreeListAllocator{ListNode{Tuple{Int, Payload}, Int}, Int}(n)
         @btime testfree($m, $n, zeros($Payload), $alloc)
 
+        GC.gc()
+
         print("  with resizable free list allocator ")
         alloc = FreeListAllocator{ListNode{Tuple{Int, Payload}, Int}, Int}(nothing)
         @btime testfree($m, $n, zeros($Payload), $alloc)
+
+        GC.gc()
+
+        print("  with fixed SOA allocator           ")
+        store = StructVector{ListNode{Tuple{Int, Payload}, Int}}(undef, n)
+        alloc = SOAllocator{ListNode{Tuple{Int, Payload}, Int}, Int, typeof(store)}(store, n)
+        @btime testalloc($m, $n, zeros($Payload), $alloc)
     end
 end

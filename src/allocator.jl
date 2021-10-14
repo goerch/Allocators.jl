@@ -1,3 +1,5 @@
+using StructArrays
+
 abstract type AbstractFreeListAllocator{T, I} end
 abstract type AbstractAllocator{T, I} <: AbstractFreeListAllocator{T, I} end
 
@@ -142,4 +144,85 @@ end
 function emptybegin!(alloc::FreeListAllocator{T, I}) where {T, I}
     emptybegin!(alloc.used)
     emptyend!(alloc.free)
+end
+
+
+# SOAllocator
+mutable struct SOAllocator{T, I, S <: StructVector{T}} <: AbstractAllocator{T, I}
+    n::I
+    resizable::Bool
+    store::S
+    first::I
+    last::I
+    SOAllocator{T, I, S}(store::S, ::Nothing, init=0) where {T, I, S <: StructVector{T}} =
+        new{T, I, S}(N, true, store, init + 1, init)
+    SOAllocator{T, I, S}(store::S, n::I, init=0) where {T, I, S <: StructVector{T}} =
+        new{T, I, S}(n, false, store, init + 1, init)
+end
+
+Base.getindex(alloc::SOAllocator{T, I, S}, i::I) where {T, I, S} =
+    @inbounds alloc.store[i]
+Base.setindex!(alloc::SOAllocator{T, I, S}, t::T, i::I)  where {T, I, S} =
+    @inbounds alloc.store[i] = t
+
+@noinline function resizeend!(alloc::SOAllocator{T, I, S}, n) where {T, I, S}
+    if n > alloc.n
+        Base._growend!(alloc.store, n - alloc.n)
+    elseif n < alloc.n
+        Base._deleteend!(alloc.store, alloc.n - n)
+    end
+    alloc.n = n
+end
+@noinline function resizebegin!(alloc::SOAllocator{T, I, S}, n) where {T, I, S}
+    if n > alloc.n
+        Base._growbeg!(alloc.store, n - alloc.n)
+    elseif n < alloc.n
+        Base._deletebeg!(alloc.store, alloc.n - n)
+    end
+    alloc.first += n - alloc.n
+    alloc.last += n - alloc.n
+    alloc.n = n
+end
+
+function allocateend!(alloc::SOAllocator{T, I, S}, t::T) where {T, I, S}
+    if alloc.resizable && alloc.last >= alloc.n
+        resizeend!(alloc, 2 * alloc.n)
+    end
+    alloc.last += 1
+    @inbounds alloc.store[alloc.last] = t
+    alloc.last
+end
+function allocatebegin!(alloc::SOAllocator{T, I, S}, t::T) where {T, I, S}
+    if alloc.resizable && alloc.first <= 1
+        resizebegin!(alloc, 2 * alloc.n)
+    end
+    alloc.first -= 1
+    @inbounds alloc.store[alloc.first] = t
+    alloc.first
+end
+function deallocateend!(alloc::SOAllocator{T, I, S}) where {T, I, S}
+    alloc.last -= 1
+    if alloc.resizable && max(N, 4 * alloc.last) < alloc.n
+        resizeend!(alloc, alloc.n ÷ 2)
+    end
+end
+function deallocatebegin!(alloc::SOAllocator{T, I, S}) where {T, I, S}
+    alloc.first += 1
+    if alloc.resizable && max(N, 4 * (alloc.n - alloc.first)) < alloc.n
+        resizebegin!(alloc, alloc.n ÷ 2)
+    end
+end
+function deallocate!(alloc::SOAllocator{T, I, S}, i::I) where {T, I, S}
+    # nope
+end
+
+Base.isempty(alloc::SOAllocator{T, I, S}) where {T, I, S} =
+    alloc.first == alloc.last + 1
+function emptyend!(alloc::SOAllocator{T, I, S}) where {T, I, S}
+    alloc.first = 1
+    alloc.last = 0
+end
+function emptybegin!(alloc::SOAllocator{T, I, S}) where {T, I, S}
+    alloc.first = alloc.n + 1
+    alloc.last = alloc.n
 end
