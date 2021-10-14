@@ -37,15 +37,15 @@ for (m, n) in [(10, 100000), (100000, 10)]
 
         Payload = StaticArrays.SVector{p ,Float64}
 
-        print("  DataStructures.Stack ")
+        print("  DataStructures.Stack           ")
         @btime testbase($m, $n, zeros($Payload))
 
-        print("  fixed allocator      ")
+        print("  Stack with fixed allocator     ")
         alloc = Allocator{Tuple{Int, Payload}, Int}(n)
         s = Stack{Tuple{Int, Payload}, Int, Allocator{Tuple{Int, Payload}, Int}}(alloc)
         @btime testalloc($m, $n, zeros($Payload), $s)
 
-        print("  resizable allocator  ")
+        print("  Stack with resizable allocator ")
         alloc = Allocator{Tuple{Int, Payload}, Int}(nothing)
         s = Stack{Tuple{Int, Payload}, Int, Allocator{Tuple{Int, Payload}, Int}}(alloc)
         @btime testalloc($m, $n, zeros($Payload), $s)

@@ -92,8 +92,10 @@ function balance(tree::Node{T}) where T
     if height_left < height_right - 1
         tree = rotateleft(tree)
         height_left = tree.left.height
+        height_right = tree.right.height
     elseif height_left > height_right + 1
         tree = rotateright(tree)
+        height_left = tree.left.height
         height_right = tree.right.height
     end
     # _height = height!(tree)
@@ -112,9 +114,11 @@ function balance(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{
         tree = rotateleft(tree, alloc)
         _, left, _, in_height = alloc[tree]
         _, _, _, height_left = alloc[left]
+        _, _, _, height_right = alloc[right]
     elseif height_left > height_right + 1
         tree = rotateright(tree, alloc)
         _, _, right, in_height = alloc[tree]
+        _, _, _, height_left = alloc[left]
         _, _, _, height_right = alloc[right]
     end
     out_height = max(height_left, height_right) + 1
@@ -244,7 +248,6 @@ function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAlloc
         0
     else
         value, left, right, _ = alloc[tree]
-        @assert left != tree && right != tree
         if t < value
             _height = height(left, alloc)
             left = delete(left, t, alloc)
