@@ -1,5 +1,3 @@
-using StructArrays
-
 abstract type AbstractFreeListAllocator{T, I} end
 abstract type AbstractAllocator{T, I} <: AbstractFreeListAllocator{T, I} end
 
@@ -18,12 +16,14 @@ mutable struct Allocator{T, I} <: AbstractAllocator{T, I}
         new{T, I}(n, false, Vector{T}(undef, n), init + 1, init)
 end
 
-Base.getindex(alloc::Allocator{T, I}, i::I) where {T, I} =
+Base.@propagate_inbounds Base.getindex(alloc::Allocator{T, I}, i::I) where {T, I} =
     @inbounds alloc.store[i]
-Base.setindex!(alloc::Allocator{T, I}, t::T, i::I)  where {T, I} =
+Base.@propagate_inbounds Base.setindex!(alloc::Allocator{T, I}, t::T, i::I)  where {T, I} =
     @inbounds alloc.store[i] = t
+Base.@propagate_inbounds Base.setindex!(alloc::Allocator{T, I}, i::I, t::U, j::I)  where {T <: Tuple, I, U} =
+    @inbounds alloc.store[i] = Base.setindex(alloc.store[i], t, j)
 
-@noinline function resizeend!(alloc::Allocator{T, I}, n) where {T, I}
+@noinline function resizeend!(alloc::Allocator{T, I}, n::I) where {T, I}
     if n > alloc.n
         Base._growend!(alloc.store, n - alloc.n)
     elseif n < alloc.n
@@ -31,7 +31,7 @@ Base.setindex!(alloc::Allocator{T, I}, t::T, i::I)  where {T, I} =
     end
     alloc.n = n
 end
-@noinline function resizebegin!(alloc::Allocator{T, I}, n) where {T, I}
+@noinline function resizebegin!(alloc::Allocator{T, I}, n::I) where {T, I}
     if n > alloc.n
         Base._growbeg!(alloc.store, n - alloc.n)
     elseif n < alloc.n
@@ -96,10 +96,12 @@ struct FreeListAllocator{T, I} <: AbstractFreeListAllocator{T, I}
         new{T, I}(Allocator{T, I}(n, init), Allocator{I, I}(n, 0))
 end
 
-Base.getindex(alloc::FreeListAllocator{T}, i::I) where {T, I} =
+Base.@propagate_inbounds Base.getindex(alloc::FreeListAllocator{T, I}, i::I) where {T, I} =
     alloc.used[i]
-Base.setindex!(alloc::FreeListAllocator{T, I}, t::T, i::I)  where {T, I} =
+Base.@propagate_inbounds Base.setindex!(alloc::FreeListAllocator{T, I}, t::T, i::I)  where {T, I} =
     alloc.used[i] = t
+Base.@propagate_inbounds Base.setindex!(alloc::FreeListAllocator{T, I}, i::I, t::U, j::I)  where {T <: Tuple, I, U} =
+    @inbounds alloc.used[i] = Base.setindex(alloc.used[i], t, j)
 
 function allocateend!(alloc::FreeListAllocator{T, I}, t::T) where {T, I}
     if isempty(alloc.free)
@@ -148,37 +150,36 @@ end
 
 
 # SOAllocator
-mutable struct SOAllocator{T, I, S <: StructVector{T}} <: AbstractAllocator{T, I}
+mutable struct SOAllocator{T, I, S} <: AbstractAllocator{T, I}
     n::I
     resizable::Bool
     store::S
     first::I
     last::I
-    SOAllocator{T, I, S}(store::S, ::Nothing, init=0) where {T, I, S <: StructVector{T}} =
+    function SOAllocator{T, I, S}(store::S, ::Nothing, init=0) where {T, I, S}
+        @assert length(store) == N
         new{T, I, S}(N, true, store, init + 1, init)
-    SOAllocator{T, I, S}(store::S, n::I, init=0) where {T, I, S <: StructVector{T}} =
+    end
+    function SOAllocator{T, I, S}(store::S, n::I, init=0) where {T, I, S}
+        @assert length(store) == n
         new{T, I, S}(n, false, store, init + 1, init)
+    end
 end
 
-Base.getindex(alloc::SOAllocator{T, I, S}, i::I) where {T, I, S} =
+Base.@propagate_inbounds Base.getindex(alloc::SOAllocator{T, I, S}, i::I) where {T, I, S} =
     @inbounds alloc.store[i]
-Base.setindex!(alloc::SOAllocator{T, I, S}, t::T, i::I)  where {T, I, S} =
+Base.@propagate_inbounds Base.setindex!(alloc::SOAllocator{T, I, S}, t::T, i::I)  where {T, I, S} =
     @inbounds alloc.store[i] = t
+Base.@propagate_inbounds Base.setindex!(alloc::SOAllocator{T, I, S}, i::I, t::U, j::I)  where {T <: Tuple, I, S <: TupleVector{T}, U} =
+    @inbounds alloc.store[i] = Base.setindex(alloc.store[i], t, j)
+    # @inbounds alloc.store.vectors[j][i] = t
 
-@noinline function resizeend!(alloc::SOAllocator{T, I, S}, n) where {T, I, S}
-    if n > alloc.n
-        Base._growend!(alloc.store, n - alloc.n)
-    elseif n < alloc.n
-        Base._deleteend!(alloc.store, alloc.n - n)
-    end
+@noinline function resizeend!(alloc::SOAllocator{T, I, S}, n::I) where {T, I, S}
+    resizeend!(alloc.store, n)
     alloc.n = n
 end
-@noinline function resizebegin!(alloc::SOAllocator{T, I, S}, n) where {T, I, S}
-    if n > alloc.n
-        Base._growbeg!(alloc.store, n - alloc.n)
-    elseif n < alloc.n
-        Base._deletebeg!(alloc.store, alloc.n - n)
-    end
+@noinline function resizebegin!(alloc::SOAllocator{T, I, S}, n::I) where {T, I, S}
+    resizebegin!(alloc.store, n)
     alloc.first += n - alloc.n
     alloc.last += n - alloc.n
     alloc.n = n
@@ -225,4 +226,86 @@ end
 function emptybegin!(alloc::SOAllocator{T, I, S}) where {T, I, S}
     alloc.first = alloc.n + 1
     alloc.last = alloc.n
+end
+
+
+mutable struct SOAllocator{T, I, S} <: AbstractAllocator{T, I}
+    n::I
+    resizable::Bool
+    store::S
+    first::I
+    last::I
+    function SOAllocator{T, I, S}(store::S, ::Nothing, init=0) where {T, I, S}
+        @assert length(store) == N
+        new{T, I, S}(N, true, store, init + 1, init)
+    end
+    function SOAllocator{T, I, S}(store::S, n::I, init=0) where {T, I, S}
+        @assert length(store) == n
+        new{T, I, S}(n, false, store, init + 1, init)
+    end
+end
+
+
+# FreeListSOAllocator
+struct FreeListSOAllocator{T, I, S} <: AbstractFreeListAllocator{T, I}
+    used::SOAllocator{T, I, S}
+    free::Allocator{I, I}
+    function FreeListSOAllocator{T, I, S}(used::S, ::Nothing, init=0) where {T, I, S}
+        new{T, I, S}(SOAllocator{T, I, S}(used, nothing), Allocator{I, I}(nothing, 0))
+    end
+    function FreeListSOAllocator{T, I, S}(used::S, n::I, init=0) where {T, I, S}
+        new{T, I, S}(SOAllocator{T, I, S}(used, n), Allocator{I, I}(n, 0))
+    end
+end
+
+Base.@propagate_inbounds Base.getindex(alloc::FreeListSOAllocator{T, I, S}, i::I) where {T, I, S} =
+    alloc.used[i]
+Base.@propagate_inbounds Base.setindex!(alloc::FreeListSOAllocator{T, I, S}, t::T, i::I)  where {T, I, S} =
+    alloc.used[i] = t
+Base.@propagate_inbounds Base.setindex!(alloc::FreeListSOAllocator{T, I, S}, i::I, t::U, j::I)  where {T <: Tuple, I, S, U} =
+    @inbounds alloc.used[i] = Base.setindex(alloc.used[i], t, j)
+
+function allocateend!(alloc::FreeListSOAllocator{T, I, S}, t::T) where {T, I, S}
+    if isempty(alloc.free)
+        allocateend!(alloc.used, t)
+    else
+        # deallocateend!(alloc.free)
+        i = alloc.free[alloc.free.last]
+        alloc.free.last -= 1
+        alloc.used[i] = t
+        i
+    end
+end
+function allocatebegin!(alloc::FreeListSOAllocator{T, I, S}, t::T) where {T, I, S}
+    if isempty(alloc.free)
+        allocatebegin!(alloc.used, t)
+    else
+        # deallocateend!(alloc.free)
+        i = alloc.free[alloc.free.last]
+        alloc.free.last -= 1
+        alloc.used[i] = t
+        i
+    end
+end
+#= function deallocateend!(alloc::FreeListSOAllocator{T, I, S}) where {T, I, S}
+    deallocateend!(alloc.used)
+end
+function deallocatebegin!(alloc::FreeListSOAllocator{T, I, S}) where {T, I, S}
+    deallocatebegin!(alloc.used)
+end =#
+function deallocate!(alloc::FreeListSOAllocator{T, I, S}, i::I) where {T, I, S}
+    allocateend!(alloc.free, i)
+end
+
+function Base.isempty(alloc::FreeListSOAllocator{T, I, S}) where {T, I, S}
+    alloc.free.last + 1 - alloc.free.first == alloc.used.last + 1 - alloc.used.first
+end
+
+function emptyend!(alloc::FreeListSOAllocator{T, I, S}) where {T, I, S}
+    emptyend!(alloc.used)
+    emptyend!(alloc.free)
+end
+function emptybegin!(alloc::FreeListSOAllocator{T, I, S}) where {T, I, S}
+    emptybegin!(alloc.used)
+    emptyend!(alloc.free)
 end

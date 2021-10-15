@@ -2,6 +2,7 @@ import DataStructures
 import AVLTrees
 using BenchmarkTools
 
+include("../src/soalight.jl")
 include("../src/allocator.jl")
 include("../src/tree.jl")
 
@@ -138,62 +139,81 @@ for (m, n) in [(10, 100000), (1000, 1000), (100000, 10)]
 
     #= GC.gc()
 
-    print("  Set                                ")
+    print("  Set                                    ")
     @btime testbase1($m, $n)
 
     GC.gc()
 
-    print("  DataStructures.SortedSet           ")
+    print("  DataStructures.SortedSet               ")
     @btime testbase2($m, $n) =#
 
     GC.gc()
 
-    print("  DataStructures.AVLTree             ")
+    print("  DataStructures.AVLTree                 ")
     @btime testbase3($m, $n)
 
     GC.gc()
 
-    print("  DataStructures.RBTree              ")
+    print("  DataStructures.RBTree                  ")
     @btime testbase4($m, $n)
 
     GC.gc()
 
-    print("  AVLTrees.AVLSet                    ")
+    print("  AVLTrees.AVLSet                        ")
     @btime testbase5($m, $n)
 
     GC.gc()
 
-    print("  Tree without allocator             ")
+    print("  Tree without allocator                 ")
     @btime testbase6($m, $n)
 
     GC.gc()
 
-    print("  with fixed allocator               ")
+    print("  with fixed allocator                   ")
     alloc = Allocator{TreeNode{Int, Int}, Int}(n)
     @btime testalloc($m, $n, $alloc)
 
     GC.gc()
 
-    print("  with resizable allocator           ")
+    print("  with resizable allocator               ")
     alloc = Allocator{TreeNode{Int, Int}, Int}(nothing)
     @btime testalloc($m, $n, $alloc)
 
     GC.gc()
 
-    print("  with fixed free list allocator     ")
+    print("  with fixed free list allocator         ")
     alloc = FreeListAllocator{TreeNode{Int, Int}, Int}(n)
     @btime testfree($m, $n, $alloc)
 
     GC.gc()
 
-    print("  with resizable free list allocator ")
+    print("  with resizable free list allocator     ")
     alloc = FreeListAllocator{TreeNode{Int, Int}, Int}(nothing)
     @btime testfree($m, $n, $alloc)
 
     GC.gc()
 
-    print("  with fixed SOA allocator           ")
-    store = StructVector{TreeNode{Int, Int}}(undef, n)
+    print("  with fixed SOA allocator               ")
+    store = TupleVector{TreeNode{Int, Int}}(n)
     alloc = SOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, n)
     @btime testalloc($m, $n, $alloc)
+
+    print("  with resizable SOA allocator           ")
+    store = TupleVector{TreeNode{Int, Int}}(N)
+    alloc = SOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, nothing)
+    @btime testalloc($m, $n, $alloc)
+
+    GC.gc()
+
+    print("  with fixed free list SOA allocator     ")
+    store = TupleVector{TreeNode{Int, Int}}(n)
+    alloc = FreeListSOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, n)
+    @btime testfree($m, $n, $alloc)
+
+    GC.gc()
+
+    print("  with resizable free list SOA allocator ")
+    store = TupleVector{TreeNode{Int, Int}}(N)
+    alloc = FreeListSOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, nothing)
+    @btime testfree($m, $n, $alloc)
 end

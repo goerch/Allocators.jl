@@ -2,6 +2,7 @@ import DataStructures
 import StaticArrays
 using BenchmarkTools
 
+include("../src/soalight.jl")
 include("../src/allocator.jl")
 include("../src/list.jl")
 
@@ -79,43 +80,63 @@ for (m, n) in [(10, 100000), (100000, 10)]
 
         GC.gc()
 
-        print("  DataStructures.List                ")
+        print("  DataStructures.List                    ")
         @btime testbase1($m, $n, zeros($Payload))
 
         GC.gc()
 
-        print("  List without allocator             ")
+        print("  List without allocator                 ")
         @btime testbase2($m, $n, zeros($Payload))
 
         GC.gc()
 
-        print("  with fixed allocator               ")
+        print("  with fixed allocator                   ")
         alloc = Allocator{ListNode{Tuple{Int, Payload}, Int}, Int}(n)
         @btime testalloc($m, $n, zeros($Payload), $alloc)
 
         GC.gc()
 
-        print("  with resizable allocator           ")
+        print("  with resizable allocator               ")
         alloc = Allocator{ListNode{Tuple{Int, Payload}, Int}, Int}(nothing)
         @btime testalloc($m, $n, zeros($Payload), $alloc)
 
         GC.gc()
 
-        print("  with fixed free list allocator     ")
+        print("  with fixed free list allocator         ")
         alloc = FreeListAllocator{ListNode{Tuple{Int, Payload}, Int}, Int}(n)
         @btime testfree($m, $n, zeros($Payload), $alloc)
 
         GC.gc()
 
-        print("  with resizable free list allocator ")
+        print("  with resizable free list allocator     ")
         alloc = FreeListAllocator{ListNode{Tuple{Int, Payload}, Int}, Int}(nothing)
         @btime testfree($m, $n, zeros($Payload), $alloc)
 
         GC.gc()
 
-        print("  with fixed SOA allocator           ")
-        store = StructVector{ListNode{Tuple{Int, Payload}, Int}}(undef, n)
+        print("  with fixed SOA allocator               ")
+        store = TupleVector{ListNode{Tuple{Int, Payload}, Int}}(n)
         alloc = SOAllocator{ListNode{Tuple{Int, Payload}, Int}, Int, typeof(store)}(store, n)
         @btime testalloc($m, $n, zeros($Payload), $alloc)
+        GC.gc()
+
+        print("  with resizable SOA allocator           ")
+        store = TupleVector{ListNode{Tuple{Int, Payload}, Int}}(N)
+        alloc = SOAllocator{ListNode{Tuple{Int, Payload}, Int}, Int, typeof(store)}(store, nothing)
+        @btime testalloc($m, $n, zeros($Payload), $alloc)
+
+        GC.gc()
+
+        print("  with fixed free list SOA allocator     ")
+        store = TupleVector{ListNode{Tuple{Int, Payload}, Int}}(n)
+        alloc = FreeListSOAllocator{ListNode{Tuple{Int, Payload}, Int}, Int, typeof(store)}(store, n)
+        @btime testfree($m, $n, zeros($Payload), $alloc)
+
+        GC.gc()
+
+        print("  with resizable free list SOA allocator ")
+        store = TupleVector{ListNode{Tuple{Int, Payload}, Int}}(N)
+        alloc = FreeListSOAllocator{ListNode{Tuple{Int, Payload}, Int}, Int, typeof(store)}(store, nothing)
+        @btime testfree($m, $n, zeros($Payload), $alloc)
     end
 end

@@ -2,6 +2,7 @@ import DataStructures
 import StaticArrays
 using BenchmarkTools
 
+include("../src/soalight.jl")
 include("../src/allocator.jl")
 include("../src/queue.jl")
 

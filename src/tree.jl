@@ -67,21 +67,21 @@ end
 function rotateright(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     value, left, right, _ = alloc[tree]
     _, _, left_right, _ = alloc[left]
-    alloc[left] = Base.setindex(alloc[left], tree, 3)
+    setindex!(alloc, left, tree, 3)
     right = tree
-    alloc[tree] = Base.setindex(alloc[tree], left_right, 2)
+    setindex!(alloc, tree, left_right, 2)
     tree = left
-    alloc[right] = Base.setindex(alloc[right], height!(right, alloc), 4)
+    setindex!(alloc, right, height!(right, alloc), 4)
     tree
 end
 function rotateleft(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     value, left, right, _ = alloc[tree]
     _, right_left, _, _ = alloc[right]
-    alloc[right] = Base.setindex(alloc[right], tree, 2)
+    setindex!(alloc, right, tree, 2)
     left = tree
-    alloc[tree] = Base.setindex(alloc[tree], right_left, 3)
+    setindex!(alloc, tree, right_left, 3)
     tree = right
-    alloc[left] = Base.setindex(alloc[left], height!(left, alloc), 4)
+    setindex!(alloc, left, height!(left, alloc), 4)
     tree
 end
 
@@ -123,7 +123,7 @@ function balance(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{
     end
     out_height = max(height_left, height_right) + 1
     if in_height != out_height
-        alloc[tree] = Base.setindex(alloc[tree], out_height, 4)
+        setindex!(alloc, tree, out_height, 4)
     end
     tree
 end
@@ -154,14 +154,14 @@ function insert(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAlloc
         if t < value
             _height = height(left, alloc)
             left = insert(left, t, alloc)
-            alloc[tree] = Base.setindex(alloc[tree], left, 2)
+            setindex!(alloc, tree, left, 2)
             if height(left, alloc) != _height
                 tree = balance(tree, alloc)
             end
         elseif t > value
             _height = height(right, alloc)
             right = insert(right, t, alloc)
-            alloc[tree] = Base.setindex(alloc[tree], right, 3)
+            setindex!(alloc, tree, right, 3)
             if height(right, alloc) != _height
                 tree = balance(tree, alloc)
             end
@@ -251,14 +251,14 @@ function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAlloc
         if t < value
             _height = height(left, alloc)
             left = delete(left, t, alloc)
-            alloc[tree] = Base.setindex(alloc[tree], left, 2)
+            setindex!(alloc, tree, left, 2)
             if height(left, alloc) != _height
                 tree = balance(tree, alloc)
             end
         elseif t > value
             _height = height(right, alloc)
             right = delete(right, t, alloc)
-            alloc[tree] = Base.setindex(alloc[tree], right, 3)
+            setindex!(alloc, tree, right, 3)
             if height(right, alloc) != _height
                 tree = balance(tree, alloc)
             end
@@ -271,17 +271,17 @@ function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAlloc
                 height_right = height(right, alloc)
                 if height_left >= height_right
                     value, _, _, _height = alloc[left]
-                    alloc[tree] = Base.setindex(alloc[tree], value, 1)
+                    setindex!(alloc, tree, value, 1)
                     left = delete(left, value, alloc)
-                    alloc[tree] = Base.setindex(alloc[tree], left, 2)
+                    setindex!(alloc, tree, left, 2)
                     if height(left, alloc) != _height
                         tree = balance(tree, alloc)
                     end
                 else
                     value, _, _, _height = alloc[right]
-                    alloc[tree] = Base.setindex(alloc[tree], value, 1)
+                    setindex!(alloc, tree, value, 1)
                     right = delete(right, value, alloc)
-                    alloc[tree] = Base.setindex(alloc[tree], right, 3)
+                    setindex!(alloc, tree, right, 3)
                     if height(right, alloc) != _height
                         tree = balance(tree, alloc)
                     end
