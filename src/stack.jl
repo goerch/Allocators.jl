@@ -1,4 +1,4 @@
-mutable struct Stack{T, I, A <: AbstractAllocator{T, I}} <: AbstractVector{T}
+mutable struct Stack{T, I, A <: AbstractAllocator{T, I}} # <: AbstractVector{T}
     alloc::A
     Stack{T, I, A}(alloc::A) where {T, I, A <: AbstractAllocator{T, I}} =
         new{T, I, A}(alloc)

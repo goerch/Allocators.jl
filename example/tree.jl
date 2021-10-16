@@ -4,6 +4,7 @@ using BenchmarkTools
 
 include("../src/soalight.jl")
 include("../src/allocator.jl")
+include("../src/stack.jl")
 include("../src/tree.jl")
 
 function testbase1(m, n)
@@ -11,12 +12,22 @@ function testbase1(m, n)
     for i in 1:m
         for j in 1:n
             push!(tree, j)
+            push!(tree, -j)
         end
+        @assert !(0 in tree)
         for j in 1:n
             @assert j in tree
+            @assert -j in tree
         end
+        @assert !(n + 1 in tree)
+        @assert !(-n - 1 in tree)
         for j in 1:n
+            @assert j in tree
+            @assert -j in tree
             pop!(tree, j)
+            pop!(tree, -j)
+            @assert !(j in tree)
+            @assert !(-j in tree)
         end
     end
 end
@@ -26,12 +37,22 @@ function testbase2(m, n)
     for i in 1:m
         for j in 1:n
             push!(tree, j)
+            push!(tree, -j)
         end
+        @assert !haskey(tree, 0)
         for j in 1:n
             @assert haskey(tree, j)
+            @assert haskey(tree, -j)
         end
+        @assert !haskey(tree, n + 1)
+        @assert !haskey(tree, -n - 1)
         for j in 1:n
+            @assert haskey(tree, j, alloc)
+            @assert haskey(tree, -j, alloc)
             pop!(tree, j)
+            pop!(tree, -j)
+            @assert !haskey(tree, j, alloc)
+            @assert !haskey(tree, -j, alloc)
         end
     end
 end
@@ -41,12 +62,22 @@ function testbase3(m, n)
     for i in 1:m
         for j in 1:n
             insert!(tree, j)
+            insert!(tree, -j)
         end
+        @assert !haskey(tree, 0)
         for j in 1:n
             @assert haskey(tree, j)
+            @assert haskey(tree, -j)
         end
+        @assert !haskey(tree, n + 1)
+        @assert !haskey(tree, -n - 1)
         for j in 1:n
+            @assert haskey(tree, j)
+            @assert haskey(tree, -j)
             delete!(tree, j)
+            delete!(tree, -j)
+            @assert !haskey(tree, j)
+            @assert !haskey(tree, -j)
         end
     end
 end
@@ -56,12 +87,22 @@ function testbase4(m, n)
     for i in 1:m
         for j in 1:n
             insert!(tree, j)
+            insert!(tree, -j)
         end
+        @assert !haskey(tree, 0)
         for j in 1:n
             @assert haskey(tree, j)
+            @assert haskey(tree, -j)
         end
+        @assert !haskey(tree, n + 1)
+        @assert !haskey(tree, -n - 1)
         for j in 1:n
+            @assert haskey(tree, j)
+            @assert haskey(tree, -j)
             delete!(tree, j)
+            delete!(tree, -j)
+            @assert !haskey(tree, j)
+            @assert !haskey(tree, -j)
         end
     end
 end
@@ -71,12 +112,22 @@ function testbase5(m, n)
     for i in 1:m
         for j in 1:n
             push!(tree, j)
+            push!(tree, -j)
         end
+        @assert !(0 in tree)
         for j in 1:n
             @assert j in tree
+            @assert -j in tree
         end
+        @assert !(n + 1 in tree)
+        @assert !(-n - 1 in tree)
         for j in 1:n
+            @assert j in tree
+            @assert -j in tree
             delete!(tree, j)
+            delete!(tree, -j)
+            @assert !(j in tree)
+            @assert !(-j in tree)
         end
     end
 end
@@ -86,14 +137,22 @@ function testbase6(m, n)
         tree = nil()
         for j in 1:n
             tree = insert(tree, j)
+            tree = insert(tree, -j)
         end
+        @assert !haskey(tree, 0)
         for j in 1:n
             @assert haskey(tree, j)
+            @assert haskey(tree, -j)
         end
+        @assert !haskey(tree, n + 1)
+        @assert !haskey(tree, -n - 1)
         for j in 1:n
             @assert haskey(tree, j)
+            @assert haskey(tree, -j)
             tree = delete(tree, j)
+            tree = delete(tree, -j)
             @assert !haskey(tree, j)
+            @assert !haskey(tree, -j)
         end
     end
 end
@@ -103,14 +162,22 @@ function testalloc(m, n, alloc)
         tree = nil(alloc)
         for j in 1:n
             tree = insert(tree, j, alloc)
+            tree = insert(tree, -j, alloc)
         end
+        @assert !haskey(tree, 0, alloc)
         for j in 1:n
             @assert haskey(tree, j, alloc)
+            @assert haskey(tree, -j, alloc)
         end
+        @assert !haskey(tree, n + 1, alloc)
+        @assert !haskey(tree, -n - 1, alloc)
         for j in 1:n
             @assert haskey(tree, j, alloc)
+            @assert haskey(tree, -j, alloc)
             tree = delete(tree, j, alloc)
+            tree = delete(tree, -j, alloc)
             @assert !haskey(tree, j, alloc)
+            @assert !haskey(tree, -j, alloc)
         end
         emptyend!(alloc)
     end
@@ -121,14 +188,22 @@ function testfree(m, n, alloc)
         tree = nil(alloc)
         for j in 1:n
             tree = insert(tree, j, alloc)
+            tree = insert(tree, -j, alloc)
         end
+        @assert !haskey(tree, 0, alloc)
         for j in 1:n
             @assert haskey(tree, j, alloc)
+            @assert haskey(tree, -j, alloc)
         end
+        @assert !haskey(tree, n + 1, alloc)
+        @assert !haskey(tree, -n - 1, alloc)
         for j in 1:n
             @assert haskey(tree, j, alloc)
+            @assert haskey(tree, -j, alloc)
             tree = delete(tree, j, alloc)
+            tree = delete(tree, -j, alloc)
             @assert !haskey(tree, j, alloc)
+            @assert !haskey(tree, -j, alloc)
         end
         @assert isempty(alloc)
     end
@@ -170,7 +245,7 @@ for (m, n) in [(10, 100000), (1000, 1000), (100000, 10)]
     GC.gc()
 
     print("  with fixed allocator                   ")
-    alloc = Allocator{TreeNode{Int, Int}, Int}(n)
+    alloc = Allocator{TreeNode{Int, Int}, Int}(2 * n)
     @btime testalloc($m, $n, $alloc)
 
     GC.gc()
@@ -182,7 +257,7 @@ for (m, n) in [(10, 100000), (1000, 1000), (100000, 10)]
     GC.gc()
 
     print("  with fixed free list allocator         ")
-    alloc = FreeListAllocator{TreeNode{Int, Int}, Int}(n)
+    alloc = FreeListAllocator{TreeNode{Int, Int}, Int}(2 * n)
     @btime testfree($m, $n, $alloc)
 
     GC.gc()
@@ -194,8 +269,8 @@ for (m, n) in [(10, 100000), (1000, 1000), (100000, 10)]
     GC.gc()
 
     print("  with fixed SOA allocator               ")
-    store = TupleVector{TreeNode{Int, Int}}(n)
-    alloc = SOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, n)
+    store = TupleVector{TreeNode{Int, Int}}(2 * n)
+    alloc = SOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, 2 * n)
     @btime testalloc($m, $n, $alloc)
 
     print("  with resizable SOA allocator           ")
@@ -206,8 +281,8 @@ for (m, n) in [(10, 100000), (1000, 1000), (100000, 10)]
     GC.gc()
 
     print("  with fixed free list SOA allocator     ")
-    store = TupleVector{TreeNode{Int, Int}}(n)
-    alloc = FreeListSOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, n)
+    store = TupleVector{TreeNode{Int, Int}}(2 * n)
+    alloc = FreeListSOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, 2 * n)
     @btime testfree($m, $n, $alloc)
 
     GC.gc()
@@ -217,3 +292,17 @@ for (m, n) in [(10, 100000), (1000, 1000), (100000, 10)]
     alloc = FreeListSOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, nothing)
     @btime testfree($m, $n, $alloc)
 end
+
+
+#= m = 10
+n = 100000
+
+GC.gc()
+@btime testbase6(m, n) =#
+
+#= using Profile
+Profile.clear()
+testbase6(m, n)
+@profile testbase6(m, n)
+# Profile.print()
+Juno.profiler() =#
