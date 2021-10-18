@@ -26,6 +26,14 @@ function invariantvalue(tree::Node{T}) where T
     invariant
 end
 
+invariantheight(tree::Nothing) = true
+function invariantheight(tree::Node{T}) where T
+    @assert tree.height == max(height(tree.left), height(tree.right)) + 1
+    invariant = abs(height(tree.left) - height(tree.right)) < 2
+    @assert invariant
+    invariant
+end
+
 function invariantvalue(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
     if tree == 0
         return true
@@ -41,6 +49,26 @@ function invariantvalue(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAll
         end
         invariant = (left == 0 || value_left < value) &&
                     (right == 0 || value_right > value)
+        @assert invariant
+        invariant
+    end
+end
+
+function invariantheight(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I, I, I}, I}}
+    if tree == 0
+        return true
+    else
+        _, left, right, height = alloc[tree]
+        height_left = 0
+        if left != 0
+            _, _, _, height_left = alloc[left]
+        end
+        height_right = 0
+        if right != 0
+            _, _, _, height_right = alloc[right]
+        end
+        @assert height == max(height_left, height_right) + 1
+        invariant = abs(height_left - height_right) < 2
         @assert invariant
         invariant
     end
@@ -131,12 +159,19 @@ function balance(tree::Node{T}) where T
     height_left = height(tree.left)
     height_right = height(tree.right)
     if height_left < height_right - 1
+        if height(tree.right.left) > height(tree.right.right)
+            tree.right = rotateright(tree.right)
+        end
         tree = rotateleft(tree)
     elseif height_left > height_right + 1
+        if height(tree.left.left) < height(tree.left.right)
+            tree.left = rotateleft(tree.left)
+        end
         tree = rotateright(tree)
     else
         height!(tree)
     end
+    # invariantheight(tree)
     tree
 end
 
@@ -145,12 +180,27 @@ function balance(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{
     height_left = height(left, alloc)
     height_right = height(right, alloc)
     if height_left < height_right - 1
+        _, right_left, right_right, _ = alloc[right]
+        height_right_left = height(right_left, alloc)
+        height_right_right = height(right_right, alloc)
+        if height_right_left > height_right_right
+            right = rotateright(right, alloc)
+            setindex!(alloc, tree, right, 3)
+        end
         tree = rotateleft(tree, alloc)
     elseif height_left > height_right + 1
+        _, left_left, left_right, _ = alloc[left]
+        height_left_left = height(left_left, alloc)
+        height_left_right = height(left_right, alloc)
+        if height_left_left < height_left_right
+            left = rotateleft(left, alloc)
+            setindex!(alloc, tree, left, 2)
+        end
         tree = rotateright(tree, alloc)
     else
         height!(tree, alloc)
     end
+    # invariantheight(tree, alloc)
     tree
 end
 

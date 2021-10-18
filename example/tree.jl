@@ -1,6 +1,7 @@
 import DataStructures
 import AVLTrees
 using BenchmarkTools
+using Profile
 
 include("../src/soalight.jl")
 include("../src/allocator.jl")
@@ -47,12 +48,12 @@ function testbase2(m, n)
         @assert !haskey(tree, n + 1)
         @assert !haskey(tree, -n - 1)
         for j in 1:n
-            @assert haskey(tree, j, alloc)
-            @assert haskey(tree, -j, alloc)
+            @assert haskey(tree, j)
+            @assert haskey(tree, -j)
             pop!(tree, j)
             pop!(tree, -j)
-            @assert !haskey(tree, j, alloc)
-            @assert !haskey(tree, -j, alloc)
+            @assert !haskey(tree, j)
+            @assert !haskey(tree, -j)
         end
     end
 end
@@ -292,17 +293,3 @@ for (m, n) in [(10, 100000), (1000, 1000), (100000, 10)]
     alloc = FreeListSOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, nothing)
     @btime testfree($m, $n, $alloc)
 end
-
-
-#= m = 10
-n = 100000
-
-GC.gc()
-@btime testbase6(m, n) =#
-
-#= using Profile
-Profile.clear()
-testbase6(m, n)
-@profile testbase6(m, n)
-# Profile.print()
-Juno.profiler() =#
