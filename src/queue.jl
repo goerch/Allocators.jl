@@ -1,4 +1,4 @@
-mutable struct Queue{T, I, A <: AbstractAllocator{T, I}}
+struct Queue{T, I, A <: AbstractAllocator{T, I}}
     alloc::A
     function Queue{T, I, A}(alloc::A) where {T, I, A <: AbstractAllocator{T, I}}
         new{T, I, A}(alloc)

@@ -1,6 +1,6 @@
 const ListNode{T, I} = Tuple{T, I}
 
-mutable struct Cons{T}
+struct Cons{T}
     car::T
     cdr::Union{Nothing, Cons{T}}
 end
