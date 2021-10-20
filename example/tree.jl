@@ -5,7 +5,6 @@ using Profile
 
 include("../src/soalight.jl")
 include("../src/allocator.jl")
-include("../src/stack.jl")
 include("../src/tree.jl")
 
 function testbase1(n)
@@ -44,7 +43,7 @@ function testbase2(n)
     end
     @assert !haskey(tree, n[] + 1)
     @assert !haskey(tree, -n[] - 1)
-    for j in 1:n
+    for j in 1:n[]
         @assert haskey(tree, j)
         @assert haskey(tree, -j)
         pop!(tree, j)
@@ -198,7 +197,7 @@ ans = nothing
 for n in [100000, 1000, 10]
     println(n, " elements")
 
-    #= GC.gc()
+    GC.gc()
 
     print("  Set                                    ")
     @btime ($ans = testbase1(Ref($n)))
@@ -206,7 +205,7 @@ for n in [100000, 1000, 10]
     GC.gc()
 
     print("  DataStructures.SortedSet               ")
-    @btime ($ans = testbase2(Ref($n))) =#
+    @btime ($ans = testbase2(Ref($n)))
 
     GC.gc()
 
