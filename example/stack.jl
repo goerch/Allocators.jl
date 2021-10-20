@@ -6,33 +6,30 @@ include("../src/soalight.jl")
 include("../src/allocator.jl")
 include("../src/stack.jl")
 
-function testbase(m, n, p)
+function testbase(n, p)
     s = DataStructures.Stack{Tuple{Int, typeof(p)}}()
-    for i in 1:m
-        for j in 1:n
-            push!(s, (j, p))
-        end
-        for j in n:-1:1
-            @assert j == pop!(s)[1]
-        end
+    for j in 1:n[]
+        push!(s, (j, p))
+    end
+    for j in n[]:-1:1
+        @assert j == pop!(s)[1]
     end
 end
 
-function testalloc(m, n, p, s)
-    for i in 1:m
-        for j in 1:n
-            push!(s, (j, p))
-        end
-        for j in n:-1:1
-            @assert j == pop!(s)[1]
-        end
-        @assert isempty(s)
-        emptyend!(s.alloc)
+function testalloc(n, p, s)
+    for j in 1:n[]
+        push!(s, (j, p))
     end
+    for j in n[]:-1:1
+        @assert j == pop!(s)[1]
+    end
+    @assert isempty(s)
+    emptyend!(s.alloc)
 end
 
-for (m, n) in [(10, 100000), (100000, 10)]
-    println(m, " runs with ", n, " elements")
+ans = nothing
+for n in [100000, 10]
+    println(n, " elements")
     for p in [1, 10, 100]
         println(" payload of ", p, " float(s)")
 
@@ -41,20 +38,20 @@ for (m, n) in [(10, 100000), (100000, 10)]
         GC.gc()
 
         print("  DataStructures.Stack           ")
-        @btime testbase($m, $n, zeros($Payload))
+        @btime ($ans = testbase(Ref($n), zeros($Payload)))
 
         GC.gc()
 
         print("  Stack with fixed allocator     ")
         alloc = Allocator{Tuple{Int, Payload}, Int}(n)
         s = Stack{Tuple{Int, Payload}, Int, Allocator{Tuple{Int, Payload}, Int}}(alloc)
-        @btime testalloc($m, $n, zeros($Payload), $s)
+        @btime ($ans = testalloc(Ref($n), zeros($Payload), $s))
 
         GC.gc()
 
         print("  Stack with resizable allocator ")
         alloc = Allocator{Tuple{Int, Payload}, Int}(nothing)
         s = Stack{Tuple{Int, Payload}, Int, Allocator{Tuple{Int, Payload}, Int}}(alloc)
-        @btime testalloc($m, $n, zeros($Payload), $s)
+        @btime ($ans = testalloc(Ref($n), zeros($Payload), $s))
     end
 end
