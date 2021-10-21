@@ -7,11 +7,11 @@ end
 const List{T} = Union{Nothing, Cons{T}}
 
 nil() = nothing
-cons(car::T, cdr::List{T}) where T = Cons{T}(car, cdr)
+cons(car::T, cdr) where T = Cons{T}(car, cdr)
 
-nil(alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I}, I}} = 0
-cons(car::T, cdr::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I}, I}} =
+nil(alloc::A) where {T, I, A <: AbstractFreeListAllocator{ListNode{T, I}, I}} = 0
+cons(car::T, cdr, alloc::A) where {T, I, A <: AbstractFreeListAllocator{ListNode{T, I}, I}} =
     allocateend!(alloc, (car, cdr))
 
-deallocate(i::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{Tuple{T, I}, I}} =
+deallocate(i::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{ListNode{T, I}, I}} =
     deallocate!(alloc, i)

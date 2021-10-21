@@ -17,11 +17,11 @@ mutable struct Allocator{T, I} <: AbstractAllocator{T, I}
 end
 
 Base.getindex(alloc::Allocator{T, I}, i::I) where {T, I} =
-    alloc.store[i]
+    @inbounds alloc.store[i]
 Base.setindex!(alloc::Allocator{T, I}, t::T, i::I) where {T, I} =
-    alloc.store[i] = t
-Base.setindex!(alloc::Allocator{T, I}, i::I, t::U, j::I) where {T <: Tuple, I, U} =
-    alloc.store[i] = Base.setindex(alloc.store[i], t, j)
+    @inbounds alloc.store[i] = t
+#= Base.setindex!(alloc::Allocator{T, I}, i::I, t::U, j::I) where {T <: Tuple, I, U} =
+    alloc.store[i] = Base.setindex(alloc.store[i], t, j) =#
 
 @noinline function resizeend!(alloc::Allocator{T, I}, n::I) where {T, I}
     if n > alloc.n
@@ -42,12 +42,12 @@ end
     alloc.n = n
 end
 
-function allocateend!(alloc::Allocator{T, I}, t::T) where {T, I}
+function allocateend!(alloc::Allocator{T, I}, t) where {T, I}
     if alloc.resizable && alloc.last >= alloc.n
         resizeend!(alloc, 2 * alloc.n)
     end
     alloc.last += 1
-    alloc.store[alloc.last] = t
+    @inbounds alloc.store[alloc.last] = t
     alloc.last
 end
 function allocatebegin!(alloc::Allocator{T, I}, t::T) where {T, I}
@@ -55,7 +55,7 @@ function allocatebegin!(alloc::Allocator{T, I}, t::T) where {T, I}
         resizebegin!(alloc, 2 * alloc.n)
     end
     alloc.first -= 1
-    alloc.store[alloc.first] = t
+    @inbounds alloc.store[alloc.first] = t
     alloc.first
 end
 function deallocateend!(alloc::Allocator{T, I}) where {T, I}
@@ -97,13 +97,13 @@ struct FreeListAllocator{T, I} <: AbstractFreeListAllocator{T, I}
 end
 
 Base.getindex(alloc::FreeListAllocator{T, I}, i::I) where {T, I} =
-    alloc.used[i]
+    @inbounds alloc.used[i]
 Base.setindex!(alloc::FreeListAllocator{T, I}, t::T, i::I) where {T, I} =
-    alloc.used[i] = t
-Base.setindex!(alloc::FreeListAllocator{T, I}, i::I, t::U, j::I) where {T <: Tuple, I, U} =
-    alloc.used[i] = Base.setindex(alloc.used[i], t, j)
+    @inbounds alloc.used[i] = t
+#= Base.setindex!(alloc::FreeListAllocator{T, I}, i::I, t::U, j::I) where {T <: Tuple, I, U} =
+    alloc.used[i] = Base.setindex(alloc.used[i], t, j) =#
 
-function allocateend!(alloc::FreeListAllocator{T, I}, t::T) where {T, I}
+function allocateend!(alloc::FreeListAllocator{T, I}, t) where {T, I}
     if isempty(alloc.free)
         allocateend!(alloc.used, t)
     else
@@ -167,12 +167,12 @@ mutable struct SOAllocator{T, I, S} <: AbstractAllocator{T, I}
 end
 
 Base.getindex(alloc::SOAllocator{T, I, S}, i::I) where {T, I, S} =
-    alloc.store[i]
+    @inbounds alloc.store[i]
 Base.setindex!(alloc::SOAllocator{T, I, S}, t::T, i::I) where {T, I, S} =
-    alloc.store[i] = t
-Base.setindex!(alloc::SOAllocator{T, I, S}, i::I, t::U, j::I) where {T <: Tuple, I, S <: TupleVector{T}, U} =
+    @inbounds alloc.store[i] = t
+#= Base.setindex!(alloc::SOAllocator{T, I, S}, i::I, t::U, j::I) where {T <: Tuple, I, S <: TupleVector{T}, U} =
     # alloc.store[i] = Base.setindex(alloc.store[i], t, j)
-    alloc.store.vectors[j][i] = t
+    alloc.store.vectors[j][i] = t =#
 
 @noinline function resizeend!(alloc::SOAllocator{T, I, S}, n::I) where {T, I, S}
     resizeend!(alloc.store, n)
@@ -185,7 +185,7 @@ end
     alloc.n = n
 end
 
-function allocateend!(alloc::SOAllocator{T, I, S}, t::T) where {T, I, S}
+function allocateend!(alloc::SOAllocator{T, I, S}, t) where {T, I, S}
     if alloc.resizable && alloc.last >= alloc.n
         resizeend!(alloc, 2 * alloc.n)
     end
@@ -198,7 +198,7 @@ function allocatebegin!(alloc::SOAllocator{T, I, S}, t::T) where {T, I, S}
         resizebegin!(alloc, 2 * alloc.n)
     end
     alloc.first -= 1
-    alloc.store[alloc.first] = t
+    @inbounds alloc.store[alloc.first] = t
     alloc.first
 end
 function deallocateend!(alloc::SOAllocator{T, I, S}) where {T, I, S}
@@ -242,14 +242,14 @@ struct FreeListSOAllocator{T, I, S} <: AbstractFreeListAllocator{T, I}
 end
 
 Base.getindex(alloc::FreeListSOAllocator{T, I, S}, i::I) where {T, I, S} =
-    alloc.used[i]
+    @inbounds alloc.used[i]
 Base.setindex!(alloc::FreeListSOAllocator{T, I, S}, t::T, i::I) where {T, I, S} =
-    alloc.used[i] = t
-Base.setindex!(alloc::FreeListSOAllocator{T, I, S}, i::I, t::U, j::I) where {T <: Tuple, I, S, U} =
+    @inbounds alloc.used[i] = t
+#= Base.setindex!(alloc::FreeListSOAllocator{T, I, S}, i::I, t::U, j::I) where {T <: Tuple, I, S, U} =
     # alloc.used[i] = Base.setindex(alloc.used[i], t, j)
-    alloc.used.store.vectors[j][i] = t
+    alloc.used.store.vectors[j][i] = t =#
 
-function allocateend!(alloc::FreeListSOAllocator{T, I, S}, t::T) where {T, I, S}
+function allocateend!(alloc::FreeListSOAllocator{T, I, S}, t) where {T, I, S}
     if isempty(alloc.free)
         allocateend!(alloc.used, t)
     else
@@ -260,7 +260,7 @@ function allocateend!(alloc::FreeListSOAllocator{T, I, S}, t::T) where {T, I, S}
         i
     end
 end
-function allocatebegin!(alloc::FreeListSOAllocator{T, I, S}, t::T) where {T, I, S}
+function allocatebegin!(alloc::FreeListSOAllocator{T, I, S}, t) where {T, I, S}
     if isempty(alloc.free)
         allocatebegin!(alloc.used, t)
     else
