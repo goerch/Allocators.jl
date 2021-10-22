@@ -16,9 +16,9 @@ mutable struct Allocator{T, I} <: AbstractAllocator{T, I}
         new{T, I}(n, false, Vector{T}(undef, n), init + 1, init)
 end
 
-Base.getindex(alloc::Allocator{T, I}, i::I) where {T, I} =
+@inline Base.@propagate_inbounds Base.getindex(alloc::Allocator{T, I}, i::I) where {T, I} =
     @inbounds alloc.store[i]
-Base.setindex!(alloc::Allocator{T, I}, t::T, i::I) where {T, I} =
+@inline Base.@propagate_inbounds Base.setindex!(alloc::Allocator{T, I}, t::T, i::I) where {T, I} =
     @inbounds alloc.store[i] = t
 #= Base.setindex!(alloc::Allocator{T, I}, i::I, t::U, j::I) where {T <: Tuple, I, U} =
     alloc.store[i] = Base.setindex(alloc.store[i], t, j) =#
@@ -96,9 +96,9 @@ struct FreeListAllocator{T, I} <: AbstractFreeListAllocator{T, I}
         new{T, I}(Allocator{T, I}(n, init), Allocator{I, I}(n, 0))
 end
 
-Base.getindex(alloc::FreeListAllocator{T, I}, i::I) where {T, I} =
+@inline Base.@propagate_inbounds Base.getindex(alloc::FreeListAllocator{T, I}, i::I) where {T, I} =
     @inbounds alloc.used[i]
-Base.setindex!(alloc::FreeListAllocator{T, I}, t::T, i::I) where {T, I} =
+@inline Base.@propagate_inbounds Base.setindex!(alloc::FreeListAllocator{T, I}, t::T, i::I) where {T, I} =
     @inbounds alloc.used[i] = t
 #= Base.setindex!(alloc::FreeListAllocator{T, I}, i::I, t::U, j::I) where {T <: Tuple, I, U} =
     alloc.used[i] = Base.setindex(alloc.used[i], t, j) =#
@@ -166,9 +166,9 @@ mutable struct SOAllocator{T, I, S} <: AbstractAllocator{T, I}
     end
 end
 
-Base.getindex(alloc::SOAllocator{T, I, S}, i::I) where {T, I, S} =
+@inline Base.@propagate_inbounds Base.getindex(alloc::SOAllocator{T, I, S}, i::I) where {T, I, S} =
     @inbounds alloc.store[i]
-Base.setindex!(alloc::SOAllocator{T, I, S}, t::T, i::I) where {T, I, S} =
+@inline Base.@propagate_inbounds Base.setindex!(alloc::SOAllocator{T, I, S}, t::T, i::I) where {T, I, S} =
     @inbounds alloc.store[i] = t
 #= Base.setindex!(alloc::SOAllocator{T, I, S}, i::I, t::U, j::I) where {T <: Tuple, I, S <: TupleVector{T}, U} =
     # alloc.store[i] = Base.setindex(alloc.store[i], t, j)
@@ -241,9 +241,9 @@ struct FreeListSOAllocator{T, I, S} <: AbstractFreeListAllocator{T, I}
     end
 end
 
-Base.getindex(alloc::FreeListSOAllocator{T, I, S}, i::I) where {T, I, S} =
+@inline Base.@propagate_inbounds Base.getindex(alloc::FreeListSOAllocator{T, I, S}, i::I) where {T, I, S} =
     @inbounds alloc.used[i]
-Base.setindex!(alloc::FreeListSOAllocator{T, I, S}, t::T, i::I) where {T, I, S} =
+@inline Base.@propagate_inbounds Base.setindex!(alloc::FreeListSOAllocator{T, I, S}, t::T, i::I) where {T, I, S} =
     @inbounds alloc.used[i] = t
 #= Base.setindex!(alloc::FreeListSOAllocator{T, I, S}, i::I, t::U, j::I) where {T <: Tuple, I, S, U} =
     # alloc.used[i] = Base.setindex(alloc.used[i], t, j)

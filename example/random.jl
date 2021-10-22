@@ -1,12 +1,26 @@
 using BenchmarkTools
 using Profile
 
-include("../src/tuple.jl")
 include("../src/soalight.jl")
 include("../src/allocator.jl")
 include("../src/tree.jl")
 
-function testbase()
+function testbase5()
+    tree = AVLTrees.AVLSet{Int}()
+    for j in 1:10000000
+        i = rand(1:100000)
+        # println("insert ", i, " ", haskey(tree, i))
+        push!(tree, i)
+        i = rand(1:100000)
+        # println("delete ", i, " ", haskey(tree, i))
+        delete!(tree, i)
+        if j % 1000 == 0
+            print(".")
+        end
+    end
+end
+
+function testbase6()
     tree = nil()
     for j in 1:10000000
         i = rand(1:100000)
