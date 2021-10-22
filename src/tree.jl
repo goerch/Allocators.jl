@@ -1,166 +1,179 @@
 const Height = Int8
-const TreeNode{T, I} = Tuple{T, I, I, I, Height}
+const TreeNode{T, I, D} = Tuple{T, I, I, I, Height, D}
 
-mutable struct Node{T}
+mutable struct Node{T, D}
     value::T
-    left::Union{Nothing, Node{T}}
-    right::Union{Nothing, Node{T}}
-    parent::Union{Nothing, Node{T}}
+    left::Union{Nothing, Node{T, D}}
+    right::Union{Nothing, Node{T, D}}
+    parent::Union{Nothing, Node{T, D}}
     height::Height
+    data::D
 end
-const Tree{T} = Union{Nothing, Node{T}}
+const Tree{T, D} = Union{Nothing, Node{T, D}}
 
 nil() = nothing
-node(t::T, left, right, parent, height) where T =
-    Node{T}(t, left, right, parent, height)
+node(t::T, left, right, parent, height, data::D) where {T, D} =
+    Node{T, D}(t, left, right, parent, height, data)
 
-nil(alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}} = 0
-node(t::T, left, right, parent, height, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}} =
-    allocateend!(alloc, (t, left, right, parent, height))
+nil(alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}} = 0
+node(t::T, left, right, parent, height, data::D, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}} =
+    allocateend!(alloc, (t, left, right, parent, height, data))
 
-deallocate(i::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}} =
+deallocate(i::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}} =
     deallocate!(alloc, i)
 
 @inline value(tree::Nothing) = @assert false
-@inline function value(tree::Node{T}) where T
+@inline function value(tree::Node{T, D}) where {T, D}
     tree.value
 end
 
 @inline left(tree::Nothing) = @assert false
-@inline function left(tree::Node{T}) where T
+@inline function left(tree::Node{T, D}) where {T, D}
     tree.left
 end
 
 @inline right(tree::Nothing) = @assert false
-@inline function right(tree::Node{T}) where T
+@inline function right(tree::Node{T, D}) where {T, D}
     tree.right
 end
 
 @inline Base.parent(tree::Nothing) = @assert false
-@inline function Base.parent(tree::Node{T}) where T
+@inline function Base.parent(tree::Node{T, D}) where {T, D}
     tree.parent
 end
 
 @inline height(tree::Nothing) = Height(0)
-@inline height(tree::Node{T}) where T = tree.height
+@inline height(tree::Node{T, D}) where {T, D} = tree.height
 
-@inline value!(tree::Nothing, left::Tree{T}) where T = @assert false
-@inline function value!(tree::Node{T}, value::T) where T
+@inline data(tree::Nothing) = @assert false
+@inline data(tree::Node{T, D}) where {T, D} = tree.data
+
+@inline value!(tree::Nothing, left::Tree{T}) where {T, D} = @assert false
+@inline function value!(tree::Node{T, D}, value::T) where {T, D}
     tree.value = value
 end
 
-@inline left!(tree::Nothing, left::Tree{T}) where T = @assert false
-@inline function left!(tree::Node{T}, left::Tree{T}) where T
+@inline left!(tree::Nothing, left::Tree{T}) where {T, D} = @assert false
+@inline function left!(tree::Node{T, D}, left::Tree{T}) where {T, D}
     tree.left = left
 end
 
-@inline right!(tree::Nothing, right::Tree{T}) where T = @assert false
-@inline function right!(tree::Node{T}, right::Tree{T}) where T
+@inline right!(tree::Nothing, right::Tree{T}) where {T, D} = @assert false
+@inline function right!(tree::Node{T, D}, right::Tree{T}) where {T, D}
     tree.right = right
 end
 
-@inline parent!(tree::Nothing, parent::Tree{T}) where T = @assert false
-@inline function parent!(tree::Node{T}, parent::Tree{T}) where T
+@inline parent!(tree::Nothing, parent::Tree{T}) where {T, D} = @assert false
+@inline function parent!(tree::Node{T, D}, parent::Tree{T}) where {T, D}
     tree.parent = parent
 end
 
 @inline height!(tree::Nothing, height_left::Height, height_right::Height) = @assert false
-@inline function height!(tree::Node{T}, height_left::Height, height_right::Height) where T
+@inline function height!(tree::Node{T, D}, height_left::Height, height_right::Height) where {T, D}
     tree.height = max(height_left, height_right) + Height(1)
 end
 
 @inline height!(tree::Nothing) = @assert false
-@inline function height!(tree::Node{T}) where T
+@inline function height!(tree::Node{T, D}) where {T, D}
     height!(tree, height(tree.left), height(tree.right))
 end
 
-@inline function value(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline data!(tree::Nothing, data::D) where {T, D} = @assert false
+@inline function data!(tree::Node{T, D}, data::D) where {T, D}
+    tree.data = data
+end
+
+@inline function value(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     tree === 0 ? (@assert false) : alloc[tree][1]
 end
 
-@inline function left(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function left(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     tree === 0 ? (@assert false) : alloc[tree][2]
 end
 
-@inline function right(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function right(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     tree === 0 ? (@assert false) : alloc[tree][3]
 end
 
-@inline function Base.parent(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function Base.parent(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     tree === 0 ? (@assert false) : alloc[tree][4]
 end
 
-@inline function height(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function height(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     tree === 0 ? Height(0) : alloc[tree][5]
 end
 
-@inline function value!(tree::I, _value::T, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function data(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
+    tree === 0 ? (@assert false) : alloc[tree][6]
+end
+
+@inline function value!(tree::I, _value::T, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree !== 0
         node = alloc[tree]
-        if _value != node[1]
+        # if _value != node[1]
             t = (_value, node[2], node[3],
-                 node[4], node[5])
+                 node[4], node[5], node[6])
             setindex!(alloc, t, tree)
-        end
+        # end
     else
         @assert false
     end
 end
 
-@inline function left!(tree::I, _left::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function left!(tree::I, _left::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree !== 0
         node = alloc[tree]
-        if _left != node[2]
+        # if _left != node[2]
             t = (node[1], _left, node[3],
-                 node[4], node[5])
+                 node[4], node[5], node[6])
             setindex!(alloc, t, tree)
-        end
+        # end
     else
         @assert false
     end
 end
 
-@inline function right!(tree::I, _right::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function right!(tree::I, _right::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree !== 0
         node = alloc[tree]
-        if _right != node[3]
+        # if _right != node[3]
             t = (node[1], node[2], _right,
-                 node[4], node[5])
+                 node[4], node[5], node[6])
             setindex!(alloc, t, tree)
-        end
+        # end
     else
         @assert false
     end
 end
 
-@inline function parent!(tree::I, _parent::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function parent!(tree::I, _parent::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree !== 0
         node = alloc[tree]
-        if _parent != node[4]
+        # if _parent != node[4]
             t = (node[1], node[2], node[3],
-                 _parent, node[5])
+                 _parent, node[5], node[6])
             setindex!(alloc, t, tree)
-        end
+        # end
     else
         @assert false
     end
 end
 
-@inline function height!(tree::I, _left::I, _right::I, height_left::Height, height_right::Height, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function height!(tree::I, _left::I, _right::I, height_left::Height, height_right::Height, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree !== 0
         _height = max(height_left, height_right) + Height(1)
         node = alloc[tree]
-        if _height != node[5]
+        # if _height != node[5]
             t = (node[1], _left, _right,
-                 node[4], _height)
+                 node[4], _height, node[6])
             setindex!(alloc, t, tree)
-        end
+        # end
     else
         @assert false
     end
 end
 
-@inline function height!(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function height!(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree !== 0
         _left = left(tree, alloc)
         _right = right(tree, alloc)
@@ -172,8 +185,21 @@ end
     end
 end
 
+@inline function data!(tree::I, _data::D, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
+    if tree !== 0
+        node = alloc[tree]
+        # if _data != node[6]
+            t = (node[1], node[2], node[3],
+                 node[4], node[5], _data)
+            setindex!(alloc, t, tree)
+        # end
+    else
+        @assert false
+    end
+end
+
 invariantvalue(tree::Nothing) = true
-function invariantvalue(tree::Node{T}) where T
+function invariantvalue(tree::Node{T, D}) where {T, D}
     invariant = true
     _value = value(tree)
     _left = left(tree)
@@ -185,7 +211,7 @@ function invariantvalue(tree::Node{T}) where T
 end
 
 invariantparent(tree::Nothing) = true
-function invariantparent(tree::Node{T}) where T
+function invariantparent(tree::Node{T, D}) where {T, D}
     invariant = true
     _left = left(tree)
     invariant &= _left === nothing || parent(_left) === tree
@@ -196,7 +222,7 @@ function invariantparent(tree::Node{T}) where T
 end
 
 invariantheight(tree::Nothing) = true
-function invariantheight(tree::Node{T}) where T
+function invariantheight(tree::Node{T, D}) where {T, D}
     _left = left(tree)
     _right = right(tree)
     _height = height(tree)
@@ -208,7 +234,7 @@ function invariantheight(tree::Node{T}) where T
     invariant
 end
 
-function invariantvalue(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+function invariantvalue(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree === 0
         return true
     else
@@ -223,7 +249,7 @@ function invariantvalue(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAll
     end
 end
 
-function invariantparent(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+function invariantparent(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree === 0
         return true
     else
@@ -237,7 +263,7 @@ function invariantparent(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAl
     end
 end
 
-function invariantheight(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+function invariantheight(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     if tree === 0
         return true
     else
@@ -253,7 +279,7 @@ function invariantheight(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAl
     end
 end
 
-@inline function rotateright(tree::Node{T}) where T
+@inline function rotateright(tree::Node{T, D}) where {T, D}
     _left = left(tree)
     _parent = parent(tree)
     left_right = right(_left)
@@ -268,7 +294,7 @@ end
     height!(_left)
     _left
 end
-@inline function rotateleft(tree::Node{T})  where T
+@inline function rotateleft(tree::Node{T, D})  where {T, D}
     _right = right(tree)
     _parent = parent(tree)
     right_left = left(_right)
@@ -284,7 +310,7 @@ end
     _right
 end
 
-@inline function rotateright(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function rotateright(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     _left = left(tree, alloc)
     _parent = parent(tree, alloc)
     left_right = right(_left, alloc)
@@ -299,7 +325,7 @@ end
     height!(_left, alloc)
     _left
 end
-@inline function rotateleft(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function rotateleft(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     _right = right(tree, alloc)
     _parent = parent(tree, alloc)
     right_left = left(_right, alloc)
@@ -316,7 +342,7 @@ end
 end
 
 @inline balance(tree::Nothing) = nothing
-@inline function balance(tree::Node{T}) where T
+@inline function balance(tree::Node{T, D}) where {T, D}
     _left = left(tree)
     _right = right(tree)
     height_left = height(_left)
@@ -347,7 +373,7 @@ end
     tree
 end
 
-@inline function balance(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function balance(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     _left = left(tree, alloc)
     _right = right(tree, alloc)
     height_left = height(_left, alloc)
@@ -378,7 +404,7 @@ end
     tree
 end
 
-function insert(tree::Tree{T}, t::T) where T
+function insert(tree::Tree{T}, t::T, data::D) where {T, D}
     _root = tree
     _parent = nothing
     while tree !== nothing
@@ -398,7 +424,7 @@ function insert(tree::Tree{T}, t::T) where T
     if tree === nothing
         _balance = true
         _update = true
-        tree = node(t, nothing, nothing, _parent, 1)
+        tree = node(t, nothing, nothing, _parent, 1, data)
     end
     while _parent !== nothing
         if _update
@@ -424,7 +450,7 @@ function insert(tree::Tree{T}, t::T) where T
     return tree
 end
 
-function insert(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+function insert(tree::I, t::T, data::D, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     _root = tree
     _parent = 0
     while tree !== 0
@@ -444,7 +470,7 @@ function insert(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAlloc
     if tree === 0
         _balance = true
         _update = true
-        tree = node(t, 0, 0, _parent, Height(1), alloc)
+        tree = node(t, 0, 0, _parent, Height(1), data, alloc)
     end
     while _parent !== 0
         if _update
@@ -470,8 +496,8 @@ function insert(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAlloc
     return tree
 end
 
-@inline Base.haskey(tree::Nothing, t::T) where T = false
-@inline function Base.haskey(tree::Node{T}, t::T) where T
+@inline Base.haskey(tree::Nothing, t::T) where {T, D} = false
+@inline function Base.haskey(tree::Node{T, D}, t::T) where {T, D}
     while tree !== nothing
         _value = value(tree)
         if t < _value
@@ -485,7 +511,7 @@ end
     return false
 end
 
-@inline function Base.haskey(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function Base.haskey(tree::I, t::T, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     while tree !== 0
         _value = value(tree, alloc)
         if t < _value
@@ -499,7 +525,51 @@ end
     return false
 end
 
-@inline function getleftmost(tree::Node{T}) where T
+@inline Base.getindex(tree::Nothing, t::T) where {T, D} = false
+@inline function Base.getindex(tree::Node{T, D}, t::T) where {T, D}
+    while tree !== nothing
+        _value = value(tree)
+        if t < _value
+            tree = left(tree)
+        elseif t > _value
+            tree = right(tree)
+        else
+            return data(tree)
+        end
+    end
+    @assert false
+end
+
+@inline function Base.haskey(tree::I, t::T, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
+    while tree !== 0
+        _value = value(tree, alloc)
+        if t < _value
+            tree = left(tree, alloc)
+        elseif t > _value
+            tree = right(tree, alloc)
+        else
+            return true
+        end
+    end
+    return false
+end
+
+@inline function Base.getindex(tree::I, t::T, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
+    while tree !== 0
+        _value = value(tree, alloc)
+        if t < _value
+            tree = left(tree, alloc)
+        elseif t > _value
+            tree = right(tree, alloc)
+        else
+            return data(tree, alloc)
+        end
+    end
+    @assert false
+end
+
+@inline getleftmost(::Nothing) = @assert false
+@inline function getleftmost(tree::Node{T, D}) where {T, D}
     _left = left(tree)
     while _left !== nothing
         tree = _left
@@ -508,7 +578,8 @@ end
     value(tree)
 end
 
-@inline function getrightmost(tree::Tree{T}) where T
+@inline getrightmost(::Nothing) = @assert false
+@inline function getrightmost(tree::Node{T, D}) where {T, D}
     _right = right(tree)
     while _right !== nothing
         tree = _right
@@ -517,7 +588,7 @@ end
     value(tree)
 end
 
-@inline function getleftmost(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function getleftmost(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     _left = left(tree, alloc)
     while _left !== 0
         tree = _left
@@ -526,7 +597,7 @@ end
     value(tree, alloc)
 end
 
-@inline function getrightmost(tree::I, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+@inline function getrightmost(tree::I, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     _right = right(tree, alloc)
     while _right !== 0
         tree = _right
@@ -564,6 +635,7 @@ function delete(tree::Tree{T}, t::T) where T
             left!(tree, left(_right))
             right!(tree, right(_right))
             height!(tree)
+            data!(tree, data(_right))
             if _left !== nothing
                 parent!(_left, tree)
             end
@@ -576,6 +648,7 @@ function delete(tree::Tree{T}, t::T) where T
             left!(tree, left(_left))
             right!(tree, right(_left))
             height!(tree)
+            data!(tree, data(_left))
             _left = left(tree)
             if _left !== nothing
                 parent!(_left, tree)
@@ -634,7 +707,7 @@ function delete(tree::Tree{T}, t::T) where T
     return tree
 end
 
-function delete(tree::I, t::T, alloc::A) where {T, I, A <: AbstractFreeListAllocator{TreeNode{T, I}, I}}
+function delete(tree::I, t::T, alloc::A) where {T, I, D, A <: AbstractFreeListAllocator{TreeNode{T, I, D}, I}}
     _root = tree
     _parent = 0
     while tree !== 0

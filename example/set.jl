@@ -125,8 +125,8 @@ end
 function testbase6(n)
     tree = nil()
     for j in 1:n[]
-        tree = insert(tree, j)
-        tree = insert(tree, -j)
+        tree = insert(tree, j, nothing)
+        tree = insert(tree, -j, nothing)
     end
     @assert !haskey(tree, 0)
     for j in 1:n[]
@@ -148,8 +148,8 @@ end
 function testalloc(n, alloc)
     tree = nil(alloc)
     for j in 1:n[]
-        tree = insert(tree, j, alloc)
-        tree = insert(tree, -j, alloc)
+        tree = insert(tree, j, nothing, alloc)
+        tree = insert(tree, -j, nothing, alloc)
     end
     @assert !haskey(tree, 0, alloc)
     for j in 1:n[]
@@ -172,8 +172,8 @@ end
 function testfree(n, alloc)
     tree = nil(alloc)
     for j in 1:n[]
-        tree = insert(tree, j, alloc)
-        tree = insert(tree, -j, alloc)
+        tree = insert(tree, j, nothing, alloc)
+        tree = insert(tree, -j, nothing, alloc)
     end
     @assert !haskey(tree, 0, alloc)
     for j in 1:n[]
@@ -230,50 +230,50 @@ for n in [100000, 1000, 10]
     GC.gc()
 
     print("  with fixed allocator                   ")
-    alloc = Allocator{TreeNode{Int, Int}, Int}(2 * n)
+    alloc = Allocator{TreeNode{Int, Int, Nothing}, Int}(2 * n)
     @btime ($ans = testalloc(Ref($n), $alloc))
 
     GC.gc()
 
     print("  with resizable allocator               ")
-    alloc = Allocator{TreeNode{Int, Int}, Int}(nothing)
+    alloc = Allocator{TreeNode{Int, Int, Nothing}, Int}(nothing)
     @btime ($ans = testalloc(Ref($n), $alloc))
 
     GC.gc()
 
     print("  with fixed free list allocator         ")
-    alloc = FreeListAllocator{TreeNode{Int, Int}, Int}(2 * n)
+    alloc = FreeListAllocator{TreeNode{Int, Int, Nothing}, Int}(2 * n)
     @btime ($ans = testfree(Ref($n), $alloc))
 
     GC.gc()
 
     print("  with resizable free list allocator     ")
-    alloc = FreeListAllocator{TreeNode{Int, Int}, Int}(nothing)
+    alloc = FreeListAllocator{TreeNode{Int, Int, Nothing}, Int}(nothing)
     @btime ($ans = testfree(Ref($n), $alloc))
 
     GC.gc()
 
     print("  with fixed SOA allocator               ")
-    store = TupleVector{TreeNode{Int, Int}}(2 * n)
-    alloc = SOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, 2 * n)
+    store = TupleVector{TreeNode{Int, Int, Nothing}}(2 * n)
+    alloc = SOAllocator{TreeNode{Int, Int, Nothing}, Int, typeof(store)}(store, 2 * n)
     @btime ($ans = testalloc(Ref($n), $alloc))
 
     print("  with resizable SOA allocator           ")
-    store = TupleVector{TreeNode{Int, Int}}(N)
-    alloc = SOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, nothing)
+    store = TupleVector{TreeNode{Int, Int, Nothing}}(N)
+    alloc = SOAllocator{TreeNode{Int, Int, Nothing}, Int, typeof(store)}(store, nothing)
     @btime ($ans = testalloc(Ref($n), $alloc))
 
     GC.gc()
 
     print("  with fixed free list SOA allocator     ")
-    store = TupleVector{TreeNode{Int, Int}}(2 * n)
-    alloc = FreeListSOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, 2 * n)
+    store = TupleVector{TreeNode{Int, Int, Nothing}}(2 * n)
+    alloc = FreeListSOAllocator{TreeNode{Int, Int, Nothing}, Int, typeof(store)}(store, 2 * n)
     @btime ($ans = testfree(Ref($n), $alloc))
 
     GC.gc()
 
     print("  with resizable free list SOA allocator ")
-    store = TupleVector{TreeNode{Int, Int}}(N)
-    alloc = FreeListSOAllocator{TreeNode{Int, Int}, Int, typeof(store)}(store, nothing)
+    store = TupleVector{TreeNode{Int, Int, Nothing}}(N)
+    alloc = FreeListSOAllocator{TreeNode{Int, Int, Nothing}, Int, typeof(store)}(store, nothing)
     @btime ($ans = testfree(Ref($n), $alloc))
 end
