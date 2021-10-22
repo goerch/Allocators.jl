@@ -34,7 +34,8 @@ We test the allocators against basic data structures.
 - List, see example/list.jl
 - Stack, see example/stack.jl
 - Queue, see example/queue.jl
-- Tree, see example/tree.jl
+- Set, see example/set.jl
+- Dict see example/dict.jl
 
 ## Results
 
