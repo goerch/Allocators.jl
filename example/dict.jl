@@ -6,7 +6,7 @@ using Profile
 
 include("../src/soalight.jl")
 include("../src/allocator.jl")
-include("../src/tree.jl")
+include("../src/tree_iter.jl")
 
 function testbase1(n, p)
     tree = Dict{Int, typeof(p)}()
@@ -54,7 +54,7 @@ function testbase2(n, p)
     end
 end
 
-# For later user
+# For later use
 #= function testbase3(n, p)
     tree = AVLTrees.AVLDict{Int, typeof(p)}()
     for j in 1:n[]
@@ -110,7 +110,7 @@ function testalloc(n, p, alloc)
     @assert !haskey(tree, 0, alloc)
     for j in 1:n[]
         @assert getindex(tree, j, alloc) === p
-        @assert getindex(tree, j, alloc) === p
+        @assert getindex(tree, -j, alloc) === p
     end
     @assert !haskey(tree, n[] + 1, alloc)
     @assert !haskey(tree, -n[] - 1, alloc)
@@ -134,7 +134,7 @@ function testfree(n, p, alloc)
     @assert !haskey(tree, 0, alloc)
     for j in 1:n[]
         @assert getindex(tree, j, alloc) === p
-        @assert getindex(tree, j, alloc) === p
+        @assert getindex(tree, -j, alloc) === p
     end
     @assert !haskey(tree, n[] + 1, alloc)
     @assert !haskey(tree, -n[] - 1, alloc)
@@ -168,9 +168,9 @@ for n in [100000, 10]
         print("  DataStructures.SortedDict              ")
         @btime ($ans = testbase2(Ref($n), zeros($Payload)))
 
-        GC.gc()
+        #= GC.gc()
 
-        #= print("  AVLTrees.AVLDict                       ")
+        print("  AVLTrees.AVLDict                       ")
         @btime ($ans = testbase3(Ref($n), zeros($Payload))) =#
 
         GC.gc()
@@ -208,6 +208,8 @@ for n in [100000, 10]
         store = TupleVector{TreeNode{Int, Int, Payload}}(2 * n)
         alloc = SOAllocator{TreeNode{Int, Int, Payload}, Int, typeof(store)}(store, 2 * n)
         @btime ($ans = testalloc(Ref($n), zeros($Payload), $alloc))
+
+        GC.gc()
 
         print("  with resizable SOA allocator           ")
         store = TupleVector{TreeNode{Int, Int, Payload}}(N)

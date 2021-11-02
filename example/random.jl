@@ -3,7 +3,7 @@ using Profile
 
 include("../src/soalight.jl")
 include("../src/allocator.jl")
-include("../src/tree.jl")
+include("../src/tree_iter.jl")
 
 function testbase5()
     tree = AVLTrees.AVLSet{Int}()
@@ -25,7 +25,7 @@ function testbase6()
     for j in 1:10000000
         i = rand(1:100000)
         # println("insert ", i, " ", haskey(tree, i))
-        tree = insert(tree, i)
+        tree = insert(tree, i, nothing)
         i = rand(1:100000)
         # println("delete ", i, " ", haskey(tree, i))
         tree = delete(tree, i)
@@ -41,7 +41,7 @@ function testalloc()
     for j in 1:10000000
         i = rand(1:100000)
         # println("insert ", i, " ", haskey(tree, i, alloc))
-        tree = insert(tree, i, alloc)
+        tree = insert(tree, i, nothing, alloc)
         i = rand(1:100000)
         # println("delete ", i, " ", haskey(tree, i, alloc))
         tree = delete(tree, i, alloc)
